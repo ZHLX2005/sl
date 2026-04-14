@@ -5,9 +5,13 @@
   },
   "plugins": [
     {
-      "name": "uv",
-      "source": "./plugins/uv",
-      "description": "Basic uv workflow operations - create, run, and manage Python projects"
+      "name": "sl",
+      "description": "一般的工作流",
+      "version": "0.0.0",
+      "source": "./",
+      "author": {
+        "name": "sl"
+      }
     }
   ]
 }
