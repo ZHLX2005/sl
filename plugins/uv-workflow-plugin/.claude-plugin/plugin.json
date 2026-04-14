@@ -1,0 +1,5 @@
+{
+  "name": "uv-workflow-plugin",
+  "description": "Basic uv workflow operations for Python project management",
+  "version": "1.0.0"
+}

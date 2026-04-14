@@ -1,0 +1,13 @@
+{
+  "name": "workflow-skills",
+  "owner": {
+    "name": "ZHLX2005"
+  },
+  "plugins": [
+    {
+      "name": "uv-workflow-plugin",
+      "source": "./plugins/uv-workflow-plugin",
+      "description": "Basic uv workflow operations - create, run, and manage Python projects"
+    }
+  ]
+}
