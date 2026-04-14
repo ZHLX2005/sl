@@ -1,7 +1,7 @@
 ---
+name: uv
 description: Guide for creating marketplace skills and how users install/update them
 ---
-
 # Marketplace Skills 指南
 
 ## 如何快速扩展一个 Skill
@@ -77,22 +77,26 @@ git push
 ### 添加 Marketplace
 
 **方式一：GitHub**
+
 ```shell
 /plugin marketplace add owner/repo
 # 例如：/plugin marketplace add ZHLX2005/sl
 ```
 
 **方式二：本地路径**
+
 ```shell
 /plugin marketplace add ./your-marketplace
 ```
 
 **方式三：远程 URL**
+
 ```shell
 /plugin marketplace add https://example.com/marketplace.json
 ```
 
 ### 浏览可用插件
+
 ```shell
 /plugin
 # 转到"发现"选项卡查看所有插件
@@ -103,17 +107,20 @@ git push
 ## 安装插件
 
 ### 安装到用户范围（所有项目可用）
+
 ```shell
 /plugin install plugin-name@marketplace-name
 # 例如：/plugin install uv@workflow-skills
 ```
 
 ### 安装到项目范围（协作者共享）
+
 ```shell
 /plugin install plugin-name@marketplace-name --scope project
 ```
 
 ### 安装到本地范围（仅自己）
+
 ```shell
 /plugin install plugin-name@marketplace-name --scope local
 ```
@@ -123,17 +130,20 @@ git push
 ## 更新插件和 Marketplace
 
 ### 更新单个插件
+
 ```shell
 /plugin install plugin-name@marketplace-name
 # 重新安装即可更新到最新版本
 ```
 
 ### 更新 Marketplace（获取新插件列表）
+
 ```shell
 /plugin marketplace update marketplace-name
 ```
 
 ### 重新加载插件（使更改生效）
+
 ```shell
 /reload-plugins
 ```
@@ -143,29 +153,35 @@ git push
 ## 管理命令
 
 ### 列出已添加的 marketplaces
+
 ```shell
 /plugin marketplace list
 ```
 
 ### 禁用插件（不卸载）
+
 ```shell
 /plugin disable plugin-name@marketplace-name
 ```
 
 ### 启用已禁用的插件
+
 ```shell
 /plugin enable plugin-name@marketplace-name
 ```
 
 ### 卸载插件
+
 ```shell
 /plugin uninstall plugin-name@marketplace-name
 ```
 
 ### 删除 Marketplace
+
 ```shell
 /plugin marketplace remove marketplace-name
 ```
+
 **注意**：删除 marketplace 会同时卸载从中安装的所有插件。
 
 ---
@@ -197,11 +213,11 @@ git push
 
 ## 快速参考
 
-| 操作 | 命令 |
-|------|------|
+| 操作             | 命令                                   |
+| ---------------- | -------------------------------------- |
 | 添加 marketplace | `/plugin marketplace add owner/repo` |
-| 安装插件 | `/plugin install name@marketplace` |
-| 重新加载 | `/reload-plugins` |
-| 更新 marketplace | `/plugin marketplace update name` |
-| 卸载插件 | `/plugin uninstall name@marketplace` |
-| 删除 marketplace | `/plugin marketplace remove name` |
+| 安装插件         | `/plugin install name@marketplace`   |
+| 重新加载         | `/reload-plugins`                    |
+| 更新 marketplace | `/plugin marketplace update name`    |
+| 卸载插件         | `/plugin uninstall name@marketplace` |
+| 删除 marketplace | `/plugin marketplace remove name`    |
