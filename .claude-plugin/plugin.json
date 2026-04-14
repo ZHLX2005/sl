@@ -1,11 +1,21 @@
 {
-    "name": "pua",
-    "version": "0.0.0",
-    "description": "skilss",
+    "name": "sl",
+    "version": "0.1.0",
+    "description": "workflow-marketplace - Claude Code 工作流市场插件，提供技能创建指南和预置工作流",
     "author": {
-        "name": "sl"
+        "name": "ZHLX2005"
     },
-    "repository": "https://github.com/ZHLX2005/sl",
+    "repository": "https://github.com/ZHLX2005/workflow-marketplace",
     "license": "MIT",
-    "keywords": []
+    "keywords": ["workflow", "marketplace", "skills", "automation"],
+    "skills": {
+        "welcome": {
+            "path": "./skills/welcome",
+            "description": "快速入门指南"
+        },
+        "uv": {
+            "path": "./skills/uv",
+            "description": "如何创建 marketplace skill"
+        }
+    }
 }

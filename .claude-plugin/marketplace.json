@@ -1,16 +1,19 @@
 {
   "name": "workflow-skills",
+  "description": "Claude Code 工作流市场 - 提供技能创建指南和预置自动化工作流",
   "owner": {
-    "name": "ZHLX2005"
+    "name": "ZHLX2005",
+    "url": "https://github.com/ZHLX2005"
   },
   "plugins": [
     {
       "name": "sl",
-      "description": "一般的工作流",
-      "version": "0.0.0",
+      "description": "workflow-marketplace 核心插件 - 包含 welcome 引导和 uv 技能创建指南",
+      "version": "0.1.0",
       "source": "./",
       "author": {
-        "name": "sl"
+        "name": "ZHLX2005",
+        "url": "https://github.com/ZHLX2005"
       }
     }
   ]
