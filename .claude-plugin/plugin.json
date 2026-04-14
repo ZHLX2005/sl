@@ -7,15 +7,5 @@
     },
     "repository": "https://github.com/ZHLX2005/workflow-marketplace",
     "license": "MIT",
-    "keywords": ["workflow", "marketplace", "skills", "automation"],
-    "skills": {
-        "welcome": {
-            "path": "./skills/welcome",
-            "description": "快速入门指南"
-        },
-        "uv": {
-            "path": "./skills/uv",
-            "description": "如何创建 marketplace skill"
-        }
-    }
+    "keywords": ["workflow", "marketplace", "skills", "automation"]
 }
