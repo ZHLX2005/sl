@@ -5,8 +5,8 @@
   },
   "plugins": [
     {
-      "name": "uv-workflow-plugin",
-      "source": "./plugins/uv-workflow-plugin",
+      "name": "uv",
+      "source": "./plugins/uv",
       "description": "Basic uv workflow operations - create, run, and manage Python projects"
     }
   ]

@@ -105,7 +105,7 @@ git push
 ### 安装到用户范围（所有项目可用）
 ```shell
 /plugin install plugin-name@marketplace-name
-# 例如：/plugin install uv-workflow-plugin@workflow-skills
+# 例如：/plugin install uv@workflow-skills
 ```
 
 ### 安装到项目范围（协作者共享）
@@ -183,7 +183,7 @@ git push
 /reload-plugins
 
 # 4. 使用 skill
-/uv-workflow
+/uv
 
 # 5. 更新插件
 /plugin install uv-workflow-plugin@workflow-skills
