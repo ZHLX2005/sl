@@ -5,7 +5,12 @@
     "author": {
         "name": "ZHLX2005"
     },
-    "repository": "https://github.com/ZHLX2005/workflow-marketplace",
+    "repository": "https://github.com/ZHLX2005/sl",
     "license": "MIT",
-    "keywords": ["workflow", "marketplace", "skills", "automation"]
+    "keywords": [
+        "workflow",
+        "marketplace",
+        "skills",
+        "automation"
+    ]
 }
