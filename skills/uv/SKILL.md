@@ -1,223 +1,187 @@
----
+```
 name: uv
-description: Guide for creating marketplace skills and how users install/update them
----
-# Marketplace Skills 指南
-
-## 如何快速扩展一个 Skill
-
-### 1. 创建 Skill 文件结构
-
-```
-your-marketplace/
-└── plugins/
-    └── your-plugin/
-        ├── .claude-plugin/
-        │   └── plugin.json
-        └── skills/
-            └── your-skill/
-                └── SKILL.md
+description: Prioritize uv over pip for all Python package management and execution. When running ANY Python command or CLI tool (python, dbt, pytest, etc.), MUST wrap with uv run
 ```
 
-### 2. 编写 SKILL.md
+# UV Priority
 
-```markdown
----
-description: Brief description of what this skill does
----
+## CRITICAL: Always Wrap Python Commands with uv or uvx
 
-# Your Skill Title
+**This is a ****mandatory skill** for all Python-related tasks. When the user mentions Python, dbt, or ANY Python package, you **MUST**:
 
-Describe the skill functionality here...
+1. **NEVER** run Python commands directly (python, python3, dbt, pytest, etc.)
+2. **ALWAYS** wrap them with `uv run` or `uvx`
+3. **NEVER** install packages with `pip install`
+4. **ALWAYS** use `uv add` or `uv pip install`
 
-## Commands
+## uv run vs uvx: When to Use Each
 
-### Usage
-Explain how to use it.
+| **Command** | **When to Use**                                                                | **Example**        |
+| ----------------- | ------------------------------------------------------------------------------------ | ------------------------ |
+| `uv run <tool>` | **Ferramenta do projeto**- precisa importar seus módulos, usada regularmente  | `uv run pytest tests/` |
+| `uvx <tool>`    | **Utilitário externo**- usa Python como runtime, mas não é parte do seu app | `uvx ruff check .`     |
+
+### Quick Decision Guide
+
+```
+ Preciso rodar uma ferramenta Python?
+ ├─ A ferramenta precisa importar meus módulos do projeto?
+ │  └─ SIM → uv run <comando>
+ └─ A ferramenta só analisa/transforma código externo?
+    └─ SIM → uvx <comando>
 ```
 
-### 3. 创建 plugin.json
+### Use `uvx` for External Tools
 
-```json
-{
-  "name": "your-plugin",
-  "description": "Plugin description",
-  "version": "1.0.0"
-}
+`uvx` creates a temporary, isolated environment. Use it for tools that:
+
+* **Analyze code without importing project modules (linters, formatters, type checkers)**
+* **Are one-off utilities not tied to your project**
+* **Shouldn't pollute your project's dependencies**
+
+```
+ uvx ruff check .          # Linter - analisa sintaxe, não importa seus módulos
+ uvx black .               # Formatter - manipula texto, não importa seus módulos
+ uvx mypy .                # Type checker - analisa tipos, não precisa rodar seu código
+ uvx isort .               # Organizador de imports - só lê arquivos
+ uvx ruff@latest check .   # Use specific version
 ```
 
-### 4. 更新 marketplace.json
+### Use `uv run` for Project Tools
 
-```json
-{
-  "name": "your-marketplace",
-  "owner": { "name": "Your Name" },
-  "plugins": [
-    {
-      "name": "your-plugin",
-      "source": "./plugins/your-plugin",
-      "description": "Your plugin description"
-    }
-  ]
-}
+`uv run` uses your project's existing virtual environment. Use it for tools that:
+
+* **Need to import your project modules**
+* **Are part of your development workflow with project dependencies**
+* **Run tests or your application**
+
+```
+ uv run pytest tests/      # Test runner - precisa importar seus módulos
+ uv run python main.py     # Sua aplicação
+ uv run python -m myapp.cli  # CLI do seu app
+ uv run dbt run            # dbt com suas transformações do projeto
 ```
 
-### 5. 推送更新
+### Rule of Consistency
 
-```bash
-git add .
-git commit -m "Add new skill"
-git push
+> **If the project already uses `uv run` for a specific tool, continue using it.**
+
+* **If you see **`uv run ruff check .` in the project, don't change to `uvx`
+* **If the user specified **`uv run pytest`, maintain the pattern
+* **Project consistency takes precedence** over the "ideal rule"
+
+**Why? Changing from **`uv run` to `uvx` (or vice-versa) mid-project can:
+
+* **Break scripts/CI that expect the specific command**
+* **Confuse other developers**
+* **Create unnecessary inconsistency**
+
+### Command Translation Rules
+
+| **NEVER run this**            | **ALWAYS run this instead**                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `python script.py`                | `uv run python script.py`                                                                       |
+| `python -c "import..."`           | `uv run python -c "import..."`                                                                  |
+| `python -m module`                | `uv run python -m module`                                                                       |
+| `python3 script.py`               | `uv run python3 script.py`                                                                      |
+| `dbt --version`                   | `uv run dbt --version`                                                                          |
+| `dbt run`                         | `uv run dbt run`                                                                                |
+| `dbt debug`                       | `uv run dbt debug`                                                                              |
+| `dbt deps`                        | `uv run dbt deps`                                                                               |
+| `pytest`                          | `uv run pytest`(imports project modules) or `uvx pytest`(one-off)                             |
+| `pytest tests/`                   | `uv run pytest tests/`(imports project modules) or `uvx pytest tests/`(one-off)               |
+| `black .`                         | `uvx black .`(preferred - external tool) or `uv run black .`(if already in project)           |
+| `ruff check .`                    | `uvx ruff check .`(preferred - external tool) or `uv run ruff check .`(if already in project) |
+| `mypy .`                          | `uvx mypy .`(preferred - external tool) or `uv run mypy .`(if already in project)             |
+| `pip install <package>`           | `uv add <package>`                                                                              |
+| `pip install -r requirements.txt` | `uv pip install -r requirements.txt`                                                            |
+| `pip list`                        | `uv pip list`                                                                                   |
+| `pip freeze`                      | `uv pip freeze`                                                                                 |
+
+## When to Use
+
+**Use when:**
+
+* **Installing ANY Python package or dependency (for ANY Python app: web apps, scripts, data processing, dbt, ML, etc.)**
+* **Setting up Python projects (web apps like Flask/Django/FastAPI, data science, ML, automation, dbt, etc.)**
+* **Installing dependencies for ANY Python-based application**
+* **Creating virtual environments**
+* **Running Python scripts**
+* **Running tests (pytest, unittest, etc.)**
+* **Using dbt commands (dbt-core, dbt-snowflake, etc.)**
+* **ANY task involving Python packages or dependencies**
+
+## Command Substitutions (MANDATORY)
+
+**NEVER use these pip commands. ALWAYS use the uv equivalent:**
+
+| **NEVER use pip**             | **ALWAYS use uv**                |
+| ----------------------------------- | -------------------------------------- |
+| `pip install <package>`           | `uv add <package>`                   |
+| `pip install -r requirements.txt` | `uv pip install -r requirements.txt` |
+| `pip list`                        | `uv pip list`                        |
+| `pip freeze`                      | `uv pip freeze`                      |
+
+### Popular Python Tools with CLI
+
+**These are commonly installed Python packages that have CLI commands. When installing or running them, always use **`uv`:
+
+| **Tool**                            | **Install with uv**                 | **Run with uv (project)**            | **Run with uvx (external)** |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------ | --------------------------------- |
+| **dbt**(dbt-core)                   | `uv add dbt-snowflake`(or dbt-postgres) | `uv run dbt <command>`                   | **-**                       |
+| **pytest**                          | `uv add pytest`                         | `uv run pytest`(imports project modules) | `uvx pytest`(one-off)           |
+| **black**(formatter)                | `uv add black`                          | `uv run black`(if in project)            | `uvx black .`(preferred)        |
+| **ruff**(linter)                    | `uv add ruff`                           | `uv run ruff`(if in project)             | `uvx ruff check .`(preferred)   |
+| **mypy**(type checker)              | `uv add mypy`                           | `uv run mypy`(if in project)             | `uvx mypy .`(preferred)         |
+| **flake8**(linter)                  | `uv add flake8`                         | `uv run flake8`                          | `uvx flake8`                    |
+| **pylint**(linter)                  | `uv add pylint`                         | `uv run pylint`                          | `uvx pylint`                    |
+| **isort**(import sorter)            | `uv add isort`                          | `uv run isort`                           | `uvx isort .`                   |
+| **poetry**(dependency manager)      | `uv add poetry`                         | `uv run poetry`                          | `uvx poetry`                    |
+| **pipenv**(dependency manager)      | `uv add pipenv`                         | `uv run pipenv`                          | `uvx pipenv`                    |
+| **cookiecutter**(project templates) | `uv add cookiecutter`                   | `uv run cookiecutter`                    | `uvx cookiecutter`              |
+| **httpie**(HTTP client)             | `uv add httpie`                         | `uv run http`                            | `uvx http`                      |
+| **mycli**(MySQL CLI)                | `uv add mycli`                          | `uv run mycli`                           | `uvx mycli`                     |
+| **pgcli**(PostgreSQL CLI)           | `uv add pgcli`                          | `uv run pgcli`                           | `uvx pgcli`                     |
+
+**Note**: For linters, formatters, and type checkers, `uvx` is preferred (doesn't pollute project dependencies). For tools that need to import your project modules (like pytest with your app code), use `uv run`.
+
+### Running Any Python Package CLI
+
+**For ANY Python package with a CLI command:**
+
+```
+ # Option 1: Run as external tool (preferred for linters, formatters, one-off tools)
+ uvx <cli-command>
+ 
+ # Option 2: Install and run within project environment
+ uv add <package>
+ uv run <cli-command>
+ 
+ # Option 3: Run with specific version
+ uvx <package>@version <cli-command>
 ```
 
----
+### Environment and Scripts
 
-## 用户如何使用你的 Marketplace
+| **NEVER use pip**   | **ALWAYS use uv**     |
+| ------------------------- | --------------------------- |
+| `python -m venv .venv`  | `uv venv`                 |
+| `python script.py`      | `uv run script.py`        |
+| `python -m module`      | `uv run python -m module` |
+| `python -m pip install` | `uv add`                  |
+| `python -m pip list`    | `uv pip list`             |
 
-### 添加 Marketplace
+## Priority
 
-**方式一：GitHub**
+`uv` (with `uv run` or `uvx`) is the **ONLY** option for Python package management and execution.
 
-```shell
-/plugin marketplace add owner/repo
-# 例如：/plugin marketplace add ZHLX2005/sl
-```
+**Execution priority**:
 
-**方式二：本地路径**
+1. `uv run <command>` - for tools that need project dependencies
+2. `uvx <command>` - for external tools that don't need project modules
 
-```shell
-/plugin marketplace add ./your-marketplace
-```
+**Only consider **`pip` as a fallback if:
 
-**方式三：远程 URL**
-
-```shell
-/plugin marketplace add https://example.com/marketplace.json
-```
-
-### 浏览可用插件
-
-```shell
-/plugin
-# 转到"发现"选项卡查看所有插件
-```
-
----
-
-## 安装插件
-
-### 安装到用户范围（所有项目可用）
-
-```shell
-/plugin install plugin-name@marketplace-name
-# 例如：/plugin install uv@workflow-skills
-```
-
-### 安装到项目范围（协作者共享）
-
-```shell
-/plugin install plugin-name@marketplace-name --scope project
-```
-
-### 安装到本地范围（仅自己）
-
-```shell
-/plugin install plugin-name@marketplace-name --scope local
-```
-
----
-
-## 更新插件和 Marketplace
-
-### 更新单个插件
-
-```shell
-/plugin install plugin-name@marketplace-name
-# 重新安装即可更新到最新版本
-```
-
-### 更新 Marketplace（获取新插件列表）
-
-```shell
-/plugin marketplace update marketplace-name
-```
-
-### 重新加载插件（使更改生效）
-
-```shell
-/reload-plugins
-```
-
----
-
-## 管理命令
-
-### 列出已添加的 marketplaces
-
-```shell
-/plugin marketplace list
-```
-
-### 禁用插件（不卸载）
-
-```shell
-/plugin disable plugin-name@marketplace-name
-```
-
-### 启用已禁用的插件
-
-```shell
-/plugin enable plugin-name@marketplace-name
-```
-
-### 卸载插件
-
-```shell
-/plugin uninstall plugin-name@marketplace-name
-```
-
-### 删除 Marketplace
-
-```shell
-/plugin marketplace remove marketplace-name
-```
-
-**注意**：删除 marketplace 会同时卸载从中安装的所有插件。
-
----
-
-## 示例：完整使用流程
-
-```shell
-# 1. 添加 marketplace
-/plugin marketplace add ZHLX2005/sl
-
-# 2. 安装插件
-/plugin install uv-workflow-plugin@workflow-skills
-
-# 3. 重新加载使插件生效
-/reload-plugins
-
-# 4. 使用 skill
-/uv
-
-# 5. 更新插件
-/plugin install uv-workflow-plugin@workflow-skills
-/reload-plugins
-
-# 6. 更新 marketplace 获取新插件
-/plugin marketplace update workflow-skills
-```
-
----
-
-## 快速参考
-
-| 操作             | 命令                                   |
-| ---------------- | -------------------------------------- |
-| 添加 marketplace | `/plugin marketplace add owner/repo` |
-| 安装插件         | `/plugin install name@marketplace`   |
-| 重新加载         | `/reload-plugins`                    |
-| 更新 marketplace | `/plugin marketplace update name`    |
-| 卸载插件         | `/plugin uninstall name@marketplace` |
-| 删除 marketplace | `/plugin marketplace remove name`    |
+1. **The user explicitly requests **`pip`
+2. `uv` is not available on the system
+3. **You receive explicit confirmation from the user**
