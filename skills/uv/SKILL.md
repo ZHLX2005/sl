@@ -1,7 +1,7 @@
-```
+---
 name: uv
 description: Prioritize uv over pip for all Python package management and execution. When running ANY Python command or CLI tool (python, dbt, pytest, etc.), MUST wrap with uv run
-```
+---
 
 # UV Priority
 
