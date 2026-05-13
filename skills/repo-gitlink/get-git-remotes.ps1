@@ -1,10 +1,7 @@
 # get-git-remotes.ps1
 # Extracts git remote URLs from .claude/repo subdirectories
 # Output: .claude/www/git.remote
-
-param(
-    [switch]$Force
-)
+# If file exists, appends to it; otherwise creates new file
 
 $repoDir = Join-Path $PSScriptRoot "..\..\repo"
 $outputFile = Join-Path $PSScriptRoot "..\..\www\git.remote"
@@ -14,9 +11,7 @@ if (-not (Test-Path $wwwDir)) {
     New-Item -ItemType Directory -Path $wwwDir -Force | Out-Null
 }
 
-if ($Force -and (Test-Path $outputFile)) {
-    Remove-Item -Path $outputFile -Force
-}
+# 如果文件不存在则创建新文件，存在则追加（不覆盖）
 if (-not (Test-Path $outputFile)) {
     New-Item -ItemType File -Path $outputFile -Force | Out-Null
 }
