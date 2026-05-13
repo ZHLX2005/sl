@@ -1,0 +1,20 @@
+{
+  "groups": [
+    {
+      "id": "ungrouped",
+      "name": "未分组"
+    },
+    {
+      "id": "mp42o94d",
+      "name": "git",
+      "skills": [
+        "git-repo-cleanup",
+        "mmx-research-gitclone",
+        "gitcli-todo",
+        "gitee-to-github-migration",
+        "repo-gitlink",
+        "gitee-to-github-reset"
+      ]
+    }
+  ]
+}
