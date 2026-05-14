@@ -8,12 +8,25 @@
       "id": "mp42o94d",
       "name": "git",
       "skills": [
-        "git-repo-cleanup",
         "mmx-research-gitclone",
         "gitcli-todo",
         "gitee-to-github-migration",
+        "gitee-to-github-reset",
+        "gh-ci-remote-debug",
+        "gh-ci-monitor"
+      ]
+    },
+    {
+      "id": "mp4xqfwb",
+      "name": "meta",
+      "skills": [
+        "git-repo-cleanup",
         "repo-gitlink",
-        "gitee-to-github-reset"
+        "index-repos",
+        "project-index-reader",
+        "key_board_2",
+        "key_board",
+        "key_board_loop"
       ]
     }
   ]
