@@ -16,6 +16,8 @@ type: workflow
 
 检查不存在PROJECT_INDEX.md 和 PROJECT_INDEX.json的仓库,对于没有index的仓库 进行并发   /sc:index-repo
 
+system: 排除_read目录 这个目录用于存放一些专门的参考分析代码 不需要进行处理
+
 # Index Repos - 多仓库并行索引创建
 
 ## 核心功能
