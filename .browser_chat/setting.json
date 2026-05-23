@@ -8,7 +8,6 @@
       "id": "mp42o94d",
       "name": "git",
       "skills": [
-        "mmx-research-gitclone",
         "gitcli-todo",
         "gitee-to-github-migration",
         "gitee-to-github-reset",
@@ -28,7 +27,8 @@
         "key_board",
         "key_board_loop",
         "project-index-reader-v2",
-        "repo-to-skill"
+        "repo-to-skill",
+        "mmx-research-gitclone"
       ]
     }
   ]
