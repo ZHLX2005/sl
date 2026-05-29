@@ -1,0 +1,15 @@
+{
+  "description": "记录用户 prompt 到本地日志",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/log-prompt.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
