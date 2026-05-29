@@ -91,9 +91,12 @@ mkdir -p <plugin-name>/{.claude-plugin,hooks,commands,scripts}
   "author": {
     "name": "<你的名字>",
     "email": "<可选>"
-  }
+  },
+  "commands": "./commands/"
 }
 ```
+
+⚠️ **`commands` 字段必须显式声明**，否则 Claude Code 可能不扫描 `commands/` 目录。值写 `"./commands/"`（以 `./` 开头的相对路径）。
 
 **3.2 `hooks/hooks.json`**
 
@@ -146,24 +149,54 @@ exit 0
 
 **3.4 `commands/<name>.md`（slash 命令）**
 
+Commands 是平面 markdown 文件，文件名即命令名（如 `log-prompt-on.md` → `/log-prompt-on`）。
+
+**ralph-loop 风格的启动/停止命令对模板：**
+
 ```markdown
 ---
-description: "<命令一句话描述>"
-argument-hint: "[OPTIONS]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh:*)"]
+description: "启动 xxx 记录"
+allowed-tools: ["Bash(cat:*)", "Bash(mkdir:*)"]
 hide-from-slash-command-tool: "true"
 ---
 
-# <Command Title>
+# Xxx On
 
-调用初始化脚本：
+创建状态文件，激活 hook：
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh" $ARGUMENTS
+mkdir -p .claude && cat > .claude/xxx.local.md <<'EOF'
+---
+active: true
+session_id: ${CLAUDE_CODE_SESSION_ID}
+started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+---
+
+Xxx enabled.
+EOF
+```
 ```
 
-执行后会发生什么的说明……
+```markdown
+---
+description: "停止 xxx 记录"
+allowed-tools: ["Bash(rm:*)"]
+hide-from-slash-command-tool: "true"
+---
+
+# Xxx Off
+
+删除状态文件，停止 hook：
+
+```!
+rm -f .claude/xxx.local.md
 ```
+```
+
+**关键 frontmatter 字段：**
+- `description` — 命令用途（tab 补全时显示）
+- `allowed-tools` — 命令体内允许调用的 Bash 模式（权限白名单）
+- `hide-from-slash-command-tool` — `"true"` 时不让 Claude 自动调用（推荐用于开关类命令）
 
 ### Step 4: 在 marketplace.json 注册（如果是市场插件）
 
@@ -233,6 +266,9 @@ chmod +x hooks/*.sh scripts/*.sh
 | hook 里 `decision:"block"` 但 `reason` 为空                 | Claude 拿不到下一轮 prompt，循环无意义                | `reason` 必须填非空字符串                                                         |
 | 命令脚本里写 `$ARGUMENTS` 但 frontmatter 没声明 allowed-tools | 用户运行时被权限拦截                                  | 在 `allowed-tools` 中显式列出 Bash 模式                                           |
 | 把 hook 状态文件提交进 git                                  | 状态泄漏到其他机器                                    | 用 `.claude/xxx.local.md` 后缀 + `.gitignore`                                     |
+| `plugin.json` 没写 `commands` 字段                          | `/xxx` 命令 tab 补全找不到，commands 不被扫描        | 显式加 `"commands": "./commands/"`                                              |
+| 命令 markdown 没写 frontmatter                              | Claude Code 不识别为有效命令                          | 必须包含 `---` 包裹的 YAML frontmatter                                           |
+| `allowed-tools` 没声明命令用到的 Bash 操作                  | 用户运行命令时被权限拦截，报错 "not allowed"          | 在 frontmatter 中列出所有用到的 Bash 模式                                        |
 | 修改 `key_board_2` 自身                                     | 元模板被破坏                                          | 任何新 skill / 新 hook 都放在**独立目录**                                         |
 
 ## ralph-loop 启示（设计参考）
@@ -256,7 +292,9 @@ chmod +x hooks/*.sh scripts/*.sh
 - [ ] 若需循环，状态文件写入了 `session_id` 用于会话隔离
 - [ ] 若需循环，设置了 `max_iterations` 或类似熔断条件
 - [ ] 在 README 提示了 Windows Git Bash 兼容写法
+- [ ] `plugin.json` 显式声明了 `"commands": "./commands/"`
 - [ ] 给配套 slash 命令 frontmatter 写了 `allowed-tools`
+- [ ] commands markdown 文件包含 YAML frontmatter
 - [ ] JSON 文件能通过 `jq .` 解析无错
 
 ## 最小可运行 demo（一键拷贝）
