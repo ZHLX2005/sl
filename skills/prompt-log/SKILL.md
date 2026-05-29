@@ -29,6 +29,11 @@ started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 EOF
 fi
+
+# 确保日志文件被 git 忽略（不重复添加）
+if ! grep -q "^\.claude/prompts\.log\.md$" .gitignore 2>/dev/null; then
+  echo ".claude/prompts.log.md" >> .gitignore
+fi
 ```
 
 回复："✅ Prompt 记录已开启，后续输入将自动保存到 `.claude/prompts.log.md`。"
