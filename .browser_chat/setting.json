@@ -28,7 +28,8 @@
         "key_board_loop",
         "project-index-reader-v2",
         "repo-to-skill",
-        "mmx-research-gitclone"
+        "mmx-research-gitclone",
+        "codebase-module-generator"
       ]
     }
   ]
