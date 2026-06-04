@@ -1,13 +1,16 @@
 #!/bin/bash
-# clone-snapshot.sh — 创建项目快照（浅克隆 --depth=1）
-# 用法: bash clone-snapshot.sh
-# 自动: 被 post-commit hook 调用
-# 手动: Claude skill "run" 命令调用
+# clone-snapshot.sh — 创建指定 commit 的项目快照（浅克隆 --depth=1）
+# 用法: bash clone-snapshot.sh [commit-hash]
+#   commit-hash: 可选，默认为当前 HEAD
+#
+# 示例:
+#   bash clone-snapshot.sh                    # 为当前 HEAD 创建快照
+#   bash clone-snapshot.sh a1b2c3d            # 为指定 commit 创建快照
 
 set -euo pipefail
 
 # ── 配置 ──────────────────────────────────────────
-KEEP_SNAPSHOTS=10          # 默认保留数量 (仅在 hook 自动清理时生效)
+KEEP_SNAPSHOTS=10          # 默认保留数量 (手动清理时生效)
 
 # ── 检测项目根目录 ──────────────────────────────
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
@@ -16,8 +19,8 @@ PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 
 # ── 收集快照元数据 ──────────────────────────────
-COMMIT_HASH=$(git rev-parse --short HEAD)
-COMMIT_MSG=$(git log -1 --pretty=%s | tr -dc '[:alnum:]-_/ ' | head -c 80 | sed 's/[\/]/_/g')
+COMMIT_HASH="${1:-$(git rev-parse --short HEAD)}"
+COMMIT_MSG=$(git log -1 --pretty=%s "${COMMIT_HASH}" 2>/dev/null | tr -dc '[:alnum:]-_/ ' | head -c 80 | sed 's/[\/]/_/g')
 TIMESTAMP=$(date +%Y-%m-%d)
 SNAPSHOT_NAME="${TIMESTAMP}-${COMMIT_HASH}"
 SNAPSHOT_DIR="${PROJECT_ROOT}/.claude/repo/project/${SNAPSHOT_NAME}"
@@ -32,21 +35,31 @@ fi
 mkdir -p "$SNAPSHOT_DIR"
 
 # ── 浅克隆 ──────────────────────────────────────
-echo "[git-commit-clone] Creating snapshot: ${SNAPSHOT_NAME}"
+echo "[git-commit-clone] Creating snapshot for commit ${COMMIT_HASH}: ${SNAPSHOT_NAME}"
+
+# 先切换到目标 commit 再克隆
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+git checkout --detach "${COMMIT_HASH}" 2>/dev/null || {
+    echo "[git-commit-clone] ERROR: commit ${COMMIT_HASH} not found"
+    rm -rf "$SNAPSHOT_DIR"
+    exit 1
+}
 git clone --depth 1 "file://${PROJECT_ROOT}" "$SNAPSHOT_DIR" 2>/dev/null || {
     echo "[git-commit-clone] WARNING: shallow clone failed, retrying..."
     rm -rf "$SNAPSHOT_DIR"
     git clone --depth 1 "file://${PROJECT_ROOT}" "$SNAPSHOT_DIR"
 }
+git checkout "$CURRENT_BRANCH" 2>/dev/null || true
 
 # ── 写入快照元数据 ──────────────────────────────
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+FULL_COMMIT_MSG=$(git log -1 --pretty=%s "${COMMIT_HASH}" 2>/dev/null | head -c 200)
 cat > "${SNAPSHOT_DIR}/.snapshot-meta.json" << EOF
 {
   "id": "${COMMIT_HASH}",
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "commit_short": "${COMMIT_HASH}",
-  "commit_msg": "${COMMIT_MSG}",
+  "commit_msg": "${FULL_COMMIT_MSG}",
   "remote_url": "${REMOTE_URL}",
   "path": ".claude/repo/project/${SNAPSHOT_NAME}"
 }
@@ -82,15 +95,3 @@ if ! [ -s "${INDEX_DIR}/snapshots.json" ]; then
 fi
 
 echo "[git-commit-clone] Snapshot saved: ${SNAPSHOT_DIR}"
-
-# ── 自动清理（保留最近 N 个） ──────────────────
-TOTAL=$(find "$INDEX_DIR" -maxdepth 1 -type d -name '*-*' 2>/dev/null | wc -l || echo 0)
-if [ "$TOTAL" -gt "$KEEP_SNAPSHOTS" ]; then
-    TO_DELETE=$((TOTAL - KEEP_SNAPSHOTS))
-    echo "[git-commit-clone] Auto-pruning ${TO_DELETE} old snapshots (keep=${KEEP_SNAPSHOTS})"
-    for snap in $(find "$INDEX_DIR" -maxdepth 1 -type d -name '*-*' | sort | head -n "$TO_DELETE"); do
-        rm -rf "$snap"
-    done
-    # 重建索引
-    rebuild_snapshots_json "$INDEX_DIR"
-fi
