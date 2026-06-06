@@ -12,7 +12,8 @@
         "gitee-to-github-migration",
         "gitee-to-github-reset",
         "gh-ci-remote-debug",
-        "gh-ci-monitor"
+        "gh-ci-monitor",
+        "git-commit-clone"
       ]
     },
     {
