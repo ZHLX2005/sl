@@ -30,7 +30,8 @@
         "project-index-reader-v2",
         "repo-to-skill",
         "mmx-research-gitclone",
-        "codebase-module-generator"
+        "codebase-module-generator",
+        "find-skills"
       ]
     }
   ]
