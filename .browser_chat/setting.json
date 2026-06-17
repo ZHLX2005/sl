@@ -31,7 +31,8 @@
         "repo-to-skill",
         "mmx-research-gitclone",
         "codebase-module-generator",
-        "find-skills"
+        "find-skills",
+        "merge-skill"
       ]
     }
   ]
