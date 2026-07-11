@@ -28,9 +28,9 @@
         "project-index-reader-v2",
         "repo-to-skill",
         "mmx-research-gitclone",
-        "codebase-module-generator",
         "find-skills",
-        "key_board_3"
+        "key_board_3",
+        "codebase-optimizer"
       ]
     },
     {
