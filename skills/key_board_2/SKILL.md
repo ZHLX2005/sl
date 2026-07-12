@@ -3,6 +3,8 @@ name: key_board_2
 description: 当用户要求"总结成skill"、"保存对话为skill"、"提取提示词"、"做成技能"时触发。这是元技能模板，用于指导创建其他技能，而非被创建的技能本身。
 ---
 # Key Board — Skill 创建元模板
+前置skill: skill-creator/writing-skills 
+如果无法找到前置skill 立刻通知用户 终止对该skill的使用
 
 ## 触发条件
 
