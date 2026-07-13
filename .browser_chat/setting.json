@@ -11,9 +11,9 @@
         "gitcli-todo",
         "gitee-to-github-migration",
         "gitee-to-github-reset",
-        "gh-ci-remote-debug",
         "gh-ci-monitor",
-        "git-commit-clone"
+        "git-commit-clone",
+        "gh-ci-remote-debug"
       ]
     },
     {
@@ -37,7 +37,9 @@
       "id": "mr5w7qx8",
       "name": "高级语言",
       "skills": [
-        "uv"
+        "uv",
+        "cli-project-template",
+        "npm-work-flow"
       ]
     }
   ]
