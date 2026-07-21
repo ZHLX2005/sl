@@ -4,7 +4,8 @@ description: |
   清理git嵌套仓库，保持仓库隔离性，让 git add . 干净无污染。
   适用于 .claude/repo/ 或其他包含克隆仓库的目录。
   当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、
-  "部分跟踪"、"白名单子目录"、"忽略但保留子目录"、"gitignore 否定规则"时触发。
+  "部分跟踪"、"白名单子目录"、"忽略但保留子目录"、"gitignore 否定规则"、
+  "忽略 .tool/"、"工具目录不入库"时触发。
 ---
 
 # git-repo-cleanup 工作流程
@@ -125,6 +126,62 @@ git commit -m "chore: track .claude/repo/_read/ reading notes, ignore cloned rep
 
 ---
 
+## 模式 C：工具目录（.tool/）
+
+适用场景：项目根下有 `.tool/` 目录保存工具脚本、临时脚本、辅助生成器、本地工具产物（如 `miniagent.exe`、`dev_ctr_hello.exe` 等已编译产物、scratch 工具）。这些工具与项目代码无关、不应纳入版本控制。
+
+> **与模式 A 的区别**：`.tool/` 是**工具产物**，不是嵌套 git 仓库。处理方式更简单——只需在 `.gitignore` 中排除，无需考虑子模块解链。
+
+### 1. 添加到 .gitignore
+
+```gitignore
+# Tool artifacts / scratch tools (本地工具产物，不入库)
+.tool/
+```
+
+如果 `.tool/` 下只有少量子目录希望跟踪（比如 `tools/scripts/`），可用白名单模式：
+
+```gitignore
+# 忽略所有工具目录内容，但保留脚本子目录
+.tool/*
+!.tool/scripts/
+!.tool/scripts/**
+```
+
+### 2. 从 git 跟踪中移除（若已跟踪）
+
+```bash
+# 如果之前误提交过 .tool/ 下的文件
+git rm --cached -r .tool/
+
+# 仅当目录里只有已编译产物（无 .git）才需要保留工作区文件
+```
+
+### 3. 验证规则生效
+
+```bash
+# 应该被忽略
+git check-ignore -v .tool/
+git check-ignore -v .tool/some-tool.exe
+
+# 应该不被忽略（白名单模式）
+git check-ignore -v .tool/scripts/build.sh
+```
+
+### 4. 提交更改
+
+```bash
+git add .gitignore
+git commit -m "chore: ignore .tool/ for local tool artifacts"
+```
+
+**完成标准**：
+- `git check-ignore -v .tool/` 命中忽略规则
+- `git status` 不再显示 `.tool/` 下的任何变更
+- `git add .` 不会暂存 `.tool/` 内容
+
+---
+
 ## ⚠️ 高频错误案例
 
 | 错误写法 | 实际后果 | 正确做法 |
@@ -134,6 +191,8 @@ git commit -m "chore: track .claude/repo/_read/ reading notes, ignore cloned rep
 | 只有 `!.claude/repo/_read/` 一行否定 | 只能恢复目录本身，目录里的文件仍被忽略 | 必须再加 `!.claude/repo/_read/**` |
 | `repo/` 宽泛规则 + `.claude/repo/*` | `repo/` 也会匹配 `.claude/repo` 作为目录 | 删掉冗余的 `repo/`，或改成 `repo/*` 并配合否定规则 |
 | 否定规则写在忽略规则**之前** | 后面的忽略规则仍生效，否定不触发 | 否定规则必须放在忽略规则**之后** |
+| 把 `.tool/` 写成 `tool/`（少一个点） | 可能误匹配其他非工具目录（如 `toolchain/`、`tools/`） | 必须带前导点 `.tool/`，且 gitignore 区分大小写 |
+| `.tool/` 规则加入后 `git status` 仍显示改动 | 之前已跟踪的文件没从索引移除 | 执行 `git rm --cached -r .tool/` 后再提交 |
 
 ### 根因速记
 
@@ -158,9 +217,24 @@ git commit -m "chore: track .claude/repo/_read/ reading notes, ignore cloned rep
 
 完成后必须满足：
 
+**模式 A（完全忽略）**：
+
+- [ ] `git check-ignore -v .claude/repo` 命中忽略规则
+- [ ] `git status` 看不到 `.claude/repo/` 下的内容
+- [ ] `git add .` 不会暂存任何克隆仓库内容
+
+**模式 B（部分跟踪）**：
+
 - [ ] `git check-ignore -v .claude/repo` 无输出
 - [ ] `git check-ignore -v .claude/repo/_read` 命中否定规则
 - [ ] `git check-ignore -v .claude/repo/agentscope` 命中忽略规则
 - [ ] `git status` 能看到 `.claude/repo/_read/` 下的新文件
 - [ ] `git status` 看不到 `.claude/repo/agentscope/` 下的内容
 - [ ] `git add .` 不会暂存任何克隆仓库内容
+
+**模式 C（.tool/ 工具目录）**：
+
+- [ ] `git check-ignore -v .tool/` 命中忽略规则
+- [ ] `git status` 不显示 `.tool/` 下任何变更
+- [ ] 若使用白名单，`git check-ignore -v .tool/scripts/build.sh` 命中否定规则
+- [ ] 若之前已跟踪，执行了 `git rm --cached -r .tool/` 并提交
