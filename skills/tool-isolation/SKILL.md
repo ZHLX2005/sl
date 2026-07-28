@@ -428,6 +428,7 @@ dist/
 | `boot-work-flow` | 工作流 skill 的"启动命令"章节可引用 `.tool/{name}/` 路径 |
 | `key_board_3` | 拆分本 skill 时，把 HTTP 测试 / npm 工具 / Python 工具各自沉淀为 reference |
 | `k6-isolated-load-test` | HTTP 性能测试优先用 k6-isolated-load-test（已封装 k6 + .tool/k6） |
+| `lottery-workflow` (ref) | 「多套风格并行 subagent + 文件投票」工作流；产物落到 `.tool/<test-name>/design/`，与 .tool 隔离规范一致 |
 
 ## 快速决策树
 
@@ -451,6 +452,9 @@ dist/
   ├─ 是 Docker 镜像 / 远程工具？
   │    └─ → .tool/{tool-name}/docker-compose.yml 或 README 说明
   │
-  └─ 是直接调项目二进制？
-       └─ ⚠️ 先想能否用 Python / npm 脚本替代；不能替代时才启服务
+  ├─ 是直接调项目二进制？
+  │    └─ ⚠️ 先想能否用 Python / npm 脚本替代；不能替代时才启服务
+  │
+  └─ 是「多套风格并行生成让用户挑」的工作流（lottery）？
+       └─ → .tool/<test-name>/design/ + 并行 subagent，详见 [[lottery-workflow]]
 ```
