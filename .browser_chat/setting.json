@@ -30,7 +30,9 @@
         "mmx-research-gitclone",
         "find-skills",
         "key_board_3",
-        "codebase-optimizer"
+        "codebase-optimizer",
+        "tool-isolation",
+        "boot-work-flow"
       ]
     },
     {
@@ -40,6 +42,14 @@
         "uv",
         "cli-project-template",
         "npm-work-flow"
+      ]
+    },
+    {
+      "id": "ms74frx6",
+      "name": "场景",
+      "skills": [
+        "obsidian-repair-unresolved-links",
+        "notion-cli"
       ]
     }
   ]
