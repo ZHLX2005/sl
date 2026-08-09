@@ -18,8 +18,8 @@ kvcli todo add --topic <topic> "<任务内容>"
 # 取第一条待办（可按 topic 过滤；可选 --json 机器可读）
 kvcli todo first [--topic <topic>] [--json]
 
-# 全量查看（待办 + 已完成；可选 --json 输出 {open:[], done:[]}）
-kvcli todo list [--json]
+# 全量查看（待办 + 已完成；可按 topic 过滤；可选 --json 输出 {open:[], done:[]}）
+kvcli todo list [--topic <topic>] [--json]
 
 # 标记完成（可带 --result 写完成结果到任务的 note 字段）
 kvcli todo done <id> [--result "完成结果摘要"]
@@ -86,6 +86,15 @@ kvcli todo prompt get --topic go --json   # → {"topic":"go","prompt":"...","ha
 kvcli todo prompt del --topic go
 ```
 `prompt` 是 topic 级的共享上下文，与具体任务解耦：同一 topic 的所有任务拉取时都带上这段提示，不用在每个任务文本里重复写。
+
+**按 topic 全量拉取（消费者拿自己主题全部任务，推荐）：**
+```bash
+# 一次拿到某 topic 的全部待办 + 已完成，无需自己过滤 JSON
+kvcli todo list --topic go
+kvcli todo list --topic go --json     # → {"open":[{...}],"done":[{...}]} 只含 go
+# 无 --topic 时 = 全量（多主题一起，需自己按 topic 区分，通常不必要）
+kvcli todo list
+```
 
 **按 topic 分流（多消费者各拉各的）：**
 ```bash
