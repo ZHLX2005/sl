@@ -1,15 +1,16 @@
 ---
 name: codebase-optimizer
-description: 阅读任意代码库目录（不限语言/框架），分析模块与代码结构，生成防腐蚀规范 SKILL.md、更新已有 skill 使其与代码库一致、或在使用 skill 后反思同步项目经验。覆盖"创建"、"同步"、"反思"三个场景。不生成孤儿文档。
+description: 阅读任意代码库目录（不限语言/框架），分析模块与代码结构，生成防腐蚀规范 SKILL.md、更新已有 skill 使其与代码库一致、在功能开发完成后同步 skill 及其 ref 文档、或在使用 skill 后反思同步项目经验。覆盖"创建"、"同步"、"功能后同步"、"反思"四个场景。不生成孤儿文档，保证 skill 及时反映真实状态。
 ---
 # Codebase Optimizer — 元技能：从代码库生成、同步或反思 Skill
 
 > **这不是特定语言的规范生成器，而是一个元技能**——适用于任何技术栈（JS、Python、Go、Rust、Java 等）的任何代码库。
 >
-> 三个场景，一个闭环：
+> 四个场景，一个闭环：
 > **① 创建** — 为某个目录生成防腐蚀规范 skill（从 0 到 1）
 > **② 同步** — 审计已有 skill 是否与代码库一致，修复假引用/死代码（从 1 到 N）
-> **③ 反思** — 使用 skill 完成任务后，把项目经验、踩坑记录、新发现的模式沉淀回 skill（经验闭环）
+> **③ 功能后同步** — 完成一次功能开发后，立即把代码变动、API 变更、新发现的模式同步到对应 skill 及其 ref 文档（保证及时更新）
+> **④ 反思** — 使用 skill 完成任务后，把项目经验、踩坑记录、新发现的模式沉淀回 skill（经验闭环）
 >
 > **本质就是一件事：让 skill 始终反映代码库和项目经验的真实状态。**
 
@@ -34,12 +35,20 @@ key_board_2/key_board_3
 - "优化 skill，同步代码库"
 - "检查 .claude/skills 里哪些 skill 已过时"
 
+### 功能开发完成后 ⚡ 高频场景
+
+- "做完这个功能了，更新下对应的 skill"
+- "这个 PR/feature 改了什么 API/路径/接口，把 skill 和 ref 同步一下"
+- "提交/合并前同步 skill 文档"
+- "新增了一个模块/路由/类，登记到对应 skill 里"
+- "这次开发改了 N 个文件，diff 里看看哪些引用要在 skill 里改"
+- "把这次的 API 变更同步到 skill 的 ref 文档"
+
 ### 反思（使用完 skill 后）
 
 - "把这个经验记到 skill 里"
 - "根据这次使用优化一下 skill"
 - "记一下这个坑，加到 skill 里"
-- "做完这个功能了，更新下对应的 skill"
 - "把刚才的教训沉淀到 skill"
 - "保存这次调试经验"
 
@@ -54,6 +63,7 @@ key_board_2/key_board_3
 | **不生成孤儿文档** | 每个产出物必须是`.claude/skills/<name>/SKILL.md`，能被系统发现 |
 | **先同步再创建**   | 如果已有 skill 与实际代码不一致，先修复再考虑创建新 skill        |
 | **用完即反思**     | 使用 skill 完成任务后，立即反思并同步经验，防止遗忘              |
+| **功能完即同步**   | 每次功能开发完成（合并/PR/提交前）必须同步相关 skill 及其 ref 文档，避免 skill 过期 |
 | **语言无关**       | 本 skill 的分析方法适用于任何编程语言                            |
 
 ---
@@ -69,7 +79,7 @@ key_board_2/key_board_3
 4. 验证 → 确认所有引用在代码库中存在
 ```
 
-下面三个场景是这套流程的具体落地。
+下面四个场景是这套流程的具体落地。
 
 ---
 
@@ -219,7 +229,156 @@ grep "class AClass\|struct AStruct" $(find . -name "*.py" -o -name "*.go")
 
 ---
 
-## 场景三：反思同步 🔄
+## 场景四：功能开发完成后同步 skill ⚡
+
+> **何时用：** 每完成一次功能开发（新模块、新 API、修改/重构既有代码、删除/移动文件），**提交或合并之前**，把这次改动的影响同步到对应的 skill 及其 `references/` 文档。
+>
+> 这是**最容易遗忘**的一步——一次功能开发往往会让一个原本正确的 skill 失效。如果不立即同步，下一个使用者按 skill 写的路径/类名/API 去找，就会踩到一个不存在的引用。
+>
+> 与「场景三：反思」的边界：
+> - **场景四**：聚焦「代码本身变了」→ 更新 skill 里的**事实层**（路径、类名、API、模块结构）
+> - **场景三**：聚焦「使用 skill 的过程有感悟」→ 更新 skill 里的**经验层**（踩坑、最佳实践、决策依据）
+>
+> 两者**互补不重叠**，一次功能开发完成后应**先走场景四、再走场景三**。
+
+### Step 1: 列出本次改动的范围
+
+```bash
+# 列出本次功能改动涉及的所有文件（按项目实际命令调整）
+git diff --name-only HEAD~1            # 提交前最近一次
+git diff --name-only origin/main       # 整个功能分支 vs 主干
+git status                              # 未提交的工作区
+```
+
+把改动文件按下面的清单分类：
+
+| 改动类型 | 例子 | 影响 |
+|---------|------|------|
+| **新增文件** | 新增 `src/auth/oauth.py` | skill 文档可能没提到该模块 |
+| **删除/移动** | 把 `auth/login.py` 改名/删掉 | skill 中的旧路径变成假引用 |
+| **重命名** | `class UserModel` → `class Account` | skill 中的旧类名失效 |
+| **修改签名/接口** | 函数参数变化、返回结构变化 | skill 中的使用示例失效 |
+| **新增/删除路由** | 新增 `POST /api/v2/login` | skill 中的接口表过期 |
+| **修改配置/协议字段** | JSON 字段改名、env 变量调整 | skill 中的数据模型/环境变量清单过期 |
+| **新增依赖** | `requirements.txt` 加包 | skill 中的工具栈说明过期 |
+| **新增子主题** | 引入一种新的错误处理模式 | 可能需要新建一个 ref 文档 |
+
+### Step 2: 定位受影响的所有 skill + ref
+
+```bash
+# 找出引用了本次改动文件的所有 skill（含 refs）
+grep -rln "本次改动路径或文件名片段" .claude/skills/
+
+# 找出引用了本次改名类/函数的所有 skill
+grep -rln "旧类名\|旧函数名" .claude/skills/
+
+# 如果本次新增了一个特化主题（如 OAuth），列出该主题可能对应的 ref
+ls .claude/skills/<相关 skill>/references/
+```
+
+判定影响范围：
+
+| 影响范围 | 例子 | 操作 |
+|---------|------|------|
+| **仅 SKILL.md** | 路径、类名、依赖矩阵等核心事实变了 | 只改 SKILL.md |
+| **仅 references/** | 某个 ref 文档里的 API 表/示例过时 | 只改对应 ref |
+| **两者都改** | 核心事实变了 + 某 ref 主题延伸 | SKILL.md 和 ref 都改 |
+| **需要新建 ref** | 出现了一个独立的特化子主题（如新的协议、新的中间件） | 新建 `references/<新主题>.md`，并在 SKILL.md 末尾 References 表登记 |
+
+### Step 3: 执行同步（按范围操作）
+
+#### 3.1 路径/类名/模块结构变化
+
+```bash
+# 在受影响的 skill 中全局替换旧名字
+sed -i 's|src/auth/login\.py|src/auth/oauth.py|g' .claude/skills/<skill>/SKILL.md
+sed -i 's|class UserModel|class Account|g' .claude/skills/<skill>/SKILL.md
+```
+
+#### 3.2 API/接口/路由变化
+
+在受影响的 skill 或 ref 中：
+1. 找到「接口表」「API 表」「路由表」等结构化清单
+2. 用本次新增/删除/调整的条目更新
+4. 同时检查正反案例中的代码示例是否还成立
+
+#### 3.3 新增模块/子主题 → 新建 ref
+
+如果本次功能引入了一个独立的子主题（如新增 OAuth、新增 WebSocket 客户端、新增报表导出）：
+
+```bash
+# 1. 在最相关的 skill 下新建 ref
+touch .claude/skills/<相关 skill>/references/<新主题>.md
+
+# 2. 把本次发现的事实 + 例子写入 ref
+
+# 3. 在 SKILL.md 末尾 References 表追加一行
+```
+
+#### 3.4 依赖/工具栈变化
+
+更新 SKILL.md 中描述「依赖/工具栈/前置条件」的小节，确保下一次使用 skill 时工具链是匹配的。
+
+### Step 4: 验证（必跑）
+
+```bash
+# 验证 SKILL.md 中所有路径引用在仓库中存在
+grep -oP '[\w/.\-]+\.[a-z]+' .claude/skills/<skill>/SKILL.md | while read f; do
+  [ -f "$f" ] && echo "✅ $f" || echo "❌ $f"
+done
+
+# 验证 SKILL.md 中提到的所有类/函数仍存在（适配目标语言）
+grep -rn "class Account\|def login" --include="*.py"
+
+# 验证每个 ref 的引用路径（如果 ref 里有路径引用）
+grep -oP '[\w/.\-]+\.[a-z]+' .claude/skills/<skill>/references/*.md | while read f; do
+  [ -f "$f" ] && echo "✅ $f (in refs)" || echo "❌ $f (in refs)"
+done
+
+# 验证 SKILL.md 末尾的 References 表中新 ref 链接有效
+ls .claude/skills/<skill>/references/ | grep "<新主题>"
+```
+
+### Step 5: 在 commit / PR 中标注 skill 同步
+
+```bash
+# 提交时把 skill 同步和功能改动放在一起（或单独提交，但要在 PR 描述里说明）
+git add .claude/skills/<skill>/
+git commit -m "feat: 新增 OAuth 登录
+
+- 代码：新增 src/auth/oauth.py
+- skill: 同步 path/auth skill，更新模块路径
+- skill ref: 新增 references/oauth.md，覆盖新协议用法
+"
+```
+
+PR 描述模板应包含：
+
+```markdown
+## 功能改动
+- ...
+
+## Skill 同步
+- [ ] 受影响的 skill 列表：<skill-a>, <skill-b>
+- [ ] 新建/更新的 ref：references/<x>.md
+- [ ] 已运行 `test -f` 验证所有引用
+```
+
+### 功能后同步的触发时机
+
+```
+完成功能开发（merge / PR / commit 前）
+  ├─ 改动文件清单：git diff --name-only
+  ├─ 定位受影响 skill：grep -rln <路径片段> .claude/skills/
+  ├─ 路径/类名/API 变了？        → 同步 SKILL.md 和对应 ref（场景四）
+  ├─ 新增独立子主题？            → 新建 ref 并登记 References 表
+  ├─ 改动中踩坑/发现新模式？     → 接着走「场景三：反思同步」沉淀经验
+  └─ 什么都没改？                → 无需操作
+```
+
+> **纪律：** 功能后同步必须和代码改动**同一 PR 内**完成（或紧随其后一个 `chore: sync skills` commit），禁止把过期的 skill 留在 main 分支超过一个迭代。
+
+---
 
 > **何时用：** 使用某个 skill 完成了任务后，把过程中发现的新模式、踩的坑、项目特化经验沉淀回 skill。
 >
@@ -366,6 +525,7 @@ grep "\[\[" .claude/skills/<target-skill>/SKILL.md  # ref 链接有效
 | 在两个 skill 中定义相同规则        | 规则冲突，用户困惑                     | 规则唯一定义在归属最近的 skill 中           |
 | 忘了这是个元技能，写成特定框架指南 | 其他项目无法使用                       | 锚定"从代码出发"原则，不写死框架名          |
 | **用完不反思**               | skill 永远停留在初版，积累不了项目经验 | 每次使用 skill 后，花 2 分钟反思（场景三）  |
+| **功能完成不更新 skill/ref** | skill 中的路径/类名/API 逐渐过期，下次使用者按文档找全踩坑 | 每次 PR/merge 前走「场景四」同步，影响范围  |
 
 ---
 
@@ -379,6 +539,8 @@ grep "\[\[" .claude/skills/<target-skill>/SKILL.md  # ref 链接有效
 - [ ] 给出了正反案例（bad_example / good_eg）
 - [ ] **同步场景**验证了所有引用的文件/类/方法存在
 - [ ] **创建场景**验证了所有 import/引用路径正确
+- [ ] **功能后同步场景**跑过 `git diff --name-only` 列出改动，并用 `test -f` + grep 验证 SKILL.md 和所有 refs 的引用
+- [ ] **功能后同步场景**如新建 ref，已在末尾 References 表登记并写好触发时机
 - [ ] **反思场景**记录了本次使用中发现的新经验
 - [ ] 不存在两个 skill 定义相同规则
 - [ ] 内容不绑定特定语言/框架（纯元技能视角）
@@ -399,6 +561,7 @@ grep "\[\[" .claude/skills/<target-skill>/SKILL.md  # ref 链接有效
 
 ## References
 
-| Ref | 何时读取                               | 路径                               |
-| --- | -------------------------------------- | ---------------------------------- |
+| Ref | 何时读取 | 路径 |
+| --- | -------- | ---- |
 | [[skill-codebase-audit]]    | 需要按部就班做深度审计时（含详细脚本） | references/skill-codebase-audit.md |
+| [[skill-post-feature-sync]] | 功能开发完成、提交/PR/合并前同步 skill 与 ref 时 | references/skill-post-feature-sync.md |

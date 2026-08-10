@@ -88,7 +88,7 @@ kvcli todo first --topic <你的topic> --json   # 带 --topic 时 JSON 含该 to
 
 ### Step 3 — 读上下文 + 润色
 
-**探索整个项目 使用subagent ,根据用户的主题 派出一个subagent帮助收集上下文 !!!!!!!!!!!** 
+**探索整个项目 使用subagent ,根据用户的主题 派出一个subagent帮助收集上下文 !!!!!!!!!!!**
 
 - 读该 topic 的提示词（`todo:prompt:<topic>`）
 - 读任务文本，把含糊的措辞、缺的信息、明显的错误标出来
@@ -117,7 +117,7 @@ kvcli todo first --topic <你的topic> --json   # 带 --topic 时 JSON 含该 to
 
 把文档/聚类结果交给用户确认每个主题的意图与优先级。**用户拍板后才算对齐。**
 
-### Step 8 — 开始解决 → **完成即回填 `todo done`**
+### Step 8 — 开始解决 → **完成r即回填 `todo done`**
 
 确认后，按主题逐簇解决。**每解决完一条，立即回填 `kvcli todo done`**——这是收单闭环的最后一步，漏掉会让任务一直挂在 open 队列：
 
