@@ -93,6 +93,7 @@ kvcli todo first --topic <你的topic> --json   # 带 --topic 时 JSON 含该 to
 - 读该 topic 的提示词（`todo:prompt:<topic>`）
 - 读任务文本，把含糊的措辞、缺的信息、明显的错误标出来
 - 把每条任务**改写成清晰的表述**（可执行、有边界、可验收），但不改其原意
+- 可选: 如果有相关的skill支持 subagent也返回相关的可以作为依据的skill条目
 
 ### Step 4 — 向用户确认 & 补充
 

@@ -1,12 +1,6 @@
-
 ---
 name: git-repo-cleanup
-description: |
-  清理git嵌套仓库，保持仓库隔离性，让 git add . 干净无污染。
-  适用于 .claude/repo/ 或其他包含克隆仓库的目录。
-  当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、
-  "部分跟踪"、"白名单子目录"、"忽略但保留子目录"、"gitignore 否定规则"、
-  "忽略 .tool/"、"工具目录不入库"时触发。
+description: 清理git嵌套仓库，保持仓库隔离性，让 git add . 干净无污染。适用于 .claude/repo/ 或其他包含克隆仓库的目录。 当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、 "部分跟踪"、"白名单子目录"、"忽略但保留子目录"、"gitignore 否定规则"、"忽略 .tool/"、"工具目录不入库"时触发。
 ---
 # git-repo-cleanup 工作流程
 
