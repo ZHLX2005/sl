@@ -1,3 +1,8 @@
 .omc/
 .claude/logs/
 .idea/
+
+# 工具目录整体不入库,skill-sh-gen(skill 打包器)作为特例白名单提交
+.tool/*
+!.tool/skill-sh-gen/
+!.tool/skill-sh-gen/**
