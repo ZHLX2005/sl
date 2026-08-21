@@ -2,7 +2,6 @@
 name: gitcli-todo
 description: Use when tracking git tag progress as a todo list, querying commits between tags, marking tags as done, or managing cursor-based workflows across git repositories.
 ---
-
 # GitCLI Todo - Git Tag Cursor Tool
 
 ## Overview
@@ -11,13 +10,13 @@ description: Use when tracking git tag progress as a todo list, querying commits
 
 ## Quick Reference
 
-| Command | Description |
-|---------|-------------|
-| `tagcli query -n <N>` | Show next N undoned tags with commits |
-| `tagcli ack <tag>` | Mark a tag as done |
-| `tagcli status` | Show all tags with done/pending status |
-| `tagcli reset` | Clear all done marks |
-| `tagcli init` | Initialize cursor file |
+| Command                 | Description                            |
+| ----------------------- | -------------------------------------- |
+| `tagcli query -n <N>` | Show next N undoned tags with commits  |
+| `tagcli ack <tag>`    | Mark a tag as done                     |
+| `tagcli status`       | Show all tags with done/pending status |
+| `tagcli reset`        | Clear all done marks                   |
+| `tagcli init`         | Initialize cursor file                 |
 
 ## Workflow
 

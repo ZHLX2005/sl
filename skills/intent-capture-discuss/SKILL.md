@@ -20,30 +20,36 @@ description: 当用户希望整理需求、明确目的、描述问题，或提�
 {项目根目录}/
 └── .claude/repo/_self/
     └── {topic-slug}/                  # 主题目录，kebab-case
-        ├── intent/                    # 用户意图（为什么做、做什么、约束）+ 设计讨论
-        │   ├── {semantic-name}-{YYYY-MM-DD}.md           # 常规意图文档
-        │   ├── {design-name}-design-{YYYY-MM-DD}-v1.md   # Design 预测设计文档（设计想法 + 版本迭代）
-        │   ├── {design-name}-design-{YYYY-MM-DD}-v2.md   # 同一想法的迭代版本，旧版保留
+        ├── intent/                    # 原始意图 + 多版本设计稿（为什么做、打算怎么做）
+        │   ├── {semantic-name}-{YYYY-MM-DD}-intent.md       # 常规意图文档
+        │   ├── {design-name}-{YYYY-MM-DD}-v1-design.md      # Design 预测设计文档（设计想法 + 版本迭代）
+        │   ├── {design-name}-{YYYY-MM-DD}-v2-design.md      # 同一想法的迭代版本，旧版保留
         │   └── ...
-        └── project/                   # 项目现状：结构、完成度、横向比较
-            ├── {YYYY-MM-DD}-v1.md              # 现状分析，首次产出
-            ├── {YYYY-MM-DD}-v2.md              # 现状分析，迭代更新
-            ├── compare_{subject}-{YYYY-MM-DD}-v1.md   # 比较文档（对比其他项目实现）
+        └── project/                   # 解释当前版本的项目现状（扁平：全部平铺，不建子目录）
+            ├── {YYYY-MM-DD}-v1-status.md       # 现状分析，首次产出
+            ├── {YYYY-MM-DD}-v2-status.md       # 现状分析，迭代更新
+            ├── {module-slug}-{YYYY-MM-DD}-v1-concepts.md   # 模块概念阐述，首次产出
+            ├── {module-slug}-{YYYY-MM-DD}-v2-concepts.md   # 概念阐述迭代，旧版保留
+            ├── compare_{subject}-{YYYY-MM-DD}-v1-status.md   # 比较文档（外部项目实现 vs 本项目实现程度）
             └── ...
 
 **命名规则：**
 
 - 主题名：从用户描述中提炼，小写 + 连字符（`docx-thesis-style-pipeline-design`）
-- Project 现状文档：`YYYY-MM-DD-vN.md`（N 自增，从 1 开始）
-- Project 比较文档：`compare_{subject}-{YYYY-MM-DD}-vN.md`（`compare_pipeline_arch-2026-08-07-v1.md`）；N 按 subject 各自独立自增
-- Intent 常规意图文档：`{semantic-name}-{YYYY-MM-DD}.md`（如 `initial-request-2026-08-14.md`、`refined-goal-2026-08-14.md`）
-- Design 预测设计文档：`{design-name}-design-{YYYY-MM-DD}-v{N}.md`（如 `casbin-hybrid-design-2026-08-14-v1.md`）；`design-name` 为该设计想法的语义化短名（kebab-case）；N 从 1 自增，**同一 design-name 的迭代不覆盖旧版**；不同想法用不同 design-name 并存，可互相引用对比
+- 命名总则：`{语义短名}-{YYYY-MM-DD}[-v{N}]-{类型后缀}.md`——类型后缀见名知意（`intent` / `design` / `concepts` / `status`）；文档**全部扁平平铺**，不建更深层子目录
+- Project 现状文档：`{YYYY-MM-DD}-vN-status.md`（N 自增，从 1 开始）
+- 模块概念阐述文档：`{module-slug}-{YYYY-MM-DD}-vN-concepts.md`（扁平放 project/ 下；module-slug 为模块语义短名 kebab-case；N 按 module 各自独立自增，旧版保留）
+- Project 比较文档：`compare_{subject}-{YYYY-MM-DD}-vN-status.md`（`compare_pipeline_arch-2026-08-07-v1-status.md`）；N 按 subject 各自独立自增——对比的是**外部项目实现**（开源项目等的方法）与**本项目实现该主题的程度**，本身也是现状快照，故同用 `-status` 后缀
+- Intent 常规意图文档：`{semantic-name}-{YYYY-MM-DD}-intent.md`（如 `initial-request-2026-08-14-intent.md`、`refined-goal-2026-08-14-intent.md`）
+- Design 预测设计文档：`{design-name}-{YYYY-MM-DD}-v{N}-design.md`（如 `casbin-hybrid-2026-08-14-v1-design.md`）；`design-name` 为该设计想法的语义化短名（kebab-case）；N 从 1 自增，**同一 design-name 的迭代不覆盖旧版**；不同想法用不同 design-name 并存，可互相引用对比
 
-> 比较文档归属 `project/` 而非 `intent/`：比较的本质是拿**本项目当前的实现状况**去和其他项目对照，属于现状盘点，不是意图表达。因此它同样受版本号约束，旧版只读保留。
+> **目录分工原则**：`intent/` 存**原始意图 + 多个版本的设计稿**（为什么做、打算怎么做）；`project/` 存**对当前版本项目现状的解释**（现在是什么样：现状分析、模块概念阐述、横向比较）。整个 skill 的原则是**讨论落文档**——多轮对话中形成的理解与决定，最终都要沉淀为上述结构化文档。
+>
+> 比较文档归属 `project/` 而非 `intent/`：compare 对比的是**外部项目的实现方法**（开源库、参考仓库）与**本项目当前实现该主题的程度**，属于现状盘点，不是意图表达，也**不是对比设计稿**（多份 design 稿之间的取舍走 2c 的"想法对比"，不产出 compare 文档）。因此它同样受版本号约束，旧版只读保留。
 
 ## 二、文档类型
 
-### 2a · Intent 常规意图文档 `intent/{semantic-name}-{YYYY-MM-DD}.md`
+### 2a · Intent 常规意图文档 `intent/{semantic-name}-{YYYY-MM-DD}-intent.md`
 
 **用途：** 记录为什么做、做什么、约束是什么。
 
@@ -81,9 +87,9 @@ Intent: {标题}
 
 ---
 
-### 2b · Project 比较文档 `project/compare_{subject}-{YYYY-MM-DD}-vN.md`（用户可选）
+### 2b · Project 比较文档 `project/compare_{subject}-{YYYY-MM-DD}-vN-status.md`（用户可选）
 
-**用途：** 针对当前主题，把**本项目的当前实现状况**与**其他项目/开源库/框架**的做法逐维对照。比较的对象是现状，不是意图——所以它放在 `project/` 下并带版本号，每次重新比较生成新版本，旧版保留不删不改。
+**用途：** 针对当前主题，把**外部项目的实现方法**（开源项目、参考仓库怎么做这个主题）与**本项目当前实现该主题的程度**逐维对照——别人用什么方法、实现到什么程度，我们实现到什么程度、差在哪。比较的对象是外部实现与本项目现状，**不是设计稿**（多份 design 稿之间的取舍属于 2c 的想法对比，不产出 compare 文档）。所以它放在 `project/` 下并带版本号，每次重新比较生成新版本，旧版保留不删不改。
 
 调用 /project-index-reader   skill,分析 ".claude/repo"存在的项目 对他们进行分析 从而进行比较,不需要联网,一般都有现成的仓库
 
@@ -99,7 +105,7 @@ Intent: {标题}
 - 对比要具体到技术选型、API 设计、数据流，而非泛泛而谈
 - "本项目现状"一列必须基于实际扫描到的代码结构填写，不写期望、不写规划
 
-### 2c · Design 预测设计文档 `intent/{design-name}-design-{YYYY-MM-DD}-v{N}.md`（设计想法讨论载体）
+### 2c · Design 预测设计文档 `intent/{design-name}-{YYYY-MM-DD}-v{N}-design.md`（设计想法讨论载体）
 
 **用途：** 记录一个**具体的、预测性的系统设计**（架构骨架、数据流、关键决策、验收标准、待拍板决策），用于设计阶段的讨论与迭代。它不描述"现在是什么样"（那是 `project/` 的职责），而是描述"打算怎么做"——对未来实现的预测。它是 2a 意图的延伸，专门承载各种设计想法的记录与反复迭代。
 
@@ -113,11 +119,11 @@ Intent: {标题}
 
 | 要素 | 规则 |
 | --- | --- |
-| 命名 | `{design-name}-design-{YYYY-MM-DD}-v{N}.md`，`design-name` 为 kebab-case（如 `casbin-hybrid-design`） |
+| 命名 | `{design-name}-{YYYY-MM-DD}-v{N}-design.md`，`design-name` 为 kebab-case（如 `casbin-hybrid`） |
 | 版本自增 | 同一 design-name 每次迭代产出 `v{N+1}`，**旧版保留不删不改**（与 `project/` 铁律一致） |
-| 并行想法 | 不同想法用不同 `design-name` 并存（如 `filter-sql-design-v1.md` 与 `casbin-design-v1.md` 可同时存在），用于"各种想法的讨论"与横向对比 |
+| 并行想法 | 不同想法用不同 `design-name` 并存（如 `filter-sql-2026-08-16-v1-design.md` 与 `casbin-2026-08-16-v1-design.md` 可同时存在），用于"各种想法的讨论"与横向对比 |
 | 试验/测试版本 | 早期版本头部标 `状态: 试验`，并在「本版要验证的假设」写明该版想验证什么；成熟后改标 `候选` / `已采纳` |
-| 落地后闭环 | 设计落地后，可选生成 `project/{design-name}-design-vs-actual-{YYYY-MM-DD}.md` 对照审计（预测 vs 实际），回到 Phase 2 推动下一轮迭代 |
+| 落地后闭环 | 设计落地后，可选生成 `project/{design-name}-design-vs-actual-{YYYY-MM-DD}-status.md` 对照审计（预测 vs 实际），回到 Phase 2 推动下一轮迭代 |
 
 **模板（节结构）：**
 
@@ -194,7 +200,20 @@ Intent: {标题}
 4. **写"预测"，不写"现状"**：设计文档描述打算怎么做；当前项目长什么样交给 `project/` 现状文档。改动范围表里的"现状"列只引用实际代码行号，不臆测。
 5. **可验收**：验收标准必须落到具体验证动作（测试、命令、矩阵），不写"实现正确即可"。
 6. **版本差异显式化**：每个新版本头部标注相对上一版新增/推翻/保留了什么，让迭代历史可追溯。
-7. **想法对比**：多个候选设计用多个 `design-name` 并存，需要对比时引用对方（如"与 `xxx-design-{YYYY-MM-DD}-v1.md` 相比，本方案…"）。
+7. **想法对比**：多个候选设计用多个 `design-name` 并存，需要对比时引用对方（如"与 `xxx-{YYYY-MM-DD}-v1-design.md` 相比，本方案…"）。
+
+### 2d · 模块概念阐述文档 `project/{module-slug}-{YYYY-MM-DD}-vN-concepts.md`（扁平，无子目录）
+
+**用途：** 当讨论的本质是**项目分析**——把某模块/子系统中形成的概念模型与命名体系（自定义概念如 slot，布局内部模块如 cell/item）沉淀为概念阐述文档，让用户把握该模块的整体框架，并知道后续提问如何准确指称各实体。
+
+**触发方式：**
+
+- 用户说"总结这个模块的概念"、"梳理我们聊的术语/指称"、"生成指称表"
+- 或由 history-collect skill 委托（见其"特殊模式：项目分析"段）
+
+**完整模板、两层指称体系（L1 对话级概念 / L2 布局模块）、常见坑见 [[概念阐述文档]]。**
+
+核心约束：概念阐述属于**现状盘点**性质——概念名必须是项目/对话中实际使用的原名，不自创同义词；未命名实体单独列出并建议命名，不虚构。
 
 ## 三、工作流程
 
@@ -223,8 +242,8 @@ Intent: {标题}
 | 现状盘点   | 已有哪些、缺哪些             |
 | 约束条件   | 技术栈/时间/兼容性           |
 | 方案方向   | 可能的实现路径（仅讨论）     |
-| 设计方案   | → 触发 `intent/{design-name}-design-{YYYY-MM-DD}-v{N}.md`；候选想法各自记录、迭代、对比 |
-| 参考对比   | → 触发 `project/compare_*` 流程 |
+| 设计方案   | → 触发 `intent/{design-name}-{YYYY-MM-DD}-v{N}-design.md`；候选想法各自记录、迭代、对比 |
+| 参考对比   | → 触发 `project/compare_*`：外部项目实现（开源等）vs 本项目实现程度 |
 | 优先级     | 先后次序                     |
 | 风险与待定 | 不确定项                     |
 
@@ -244,17 +263,18 @@ Intent: {标题}
 
 | 文档类型     | 输出路径                                                                    |
 | ------------ | --------------------------------------------------------------------------- |
-| Intent 意图  | `.claude/repo/_self/{topic}/intent/{semantic-name}-{YYYY-MM-DD}.md`                     |
-| Design 预测设计 | `.claude/repo/_self/{topic}/intent/{design-name}-design-{YYYY-MM-DD}-v{N}.md`      |
-| Project 现状 | `.claude/repo/_self/{topic}/project/{date}-v{N}.md`                       |
-| Project 比较 | `.claude/repo/_self/{topic}/project/compare_{subject}-{date}-v{N}.md`     |
+| Intent 意图  | `.claude/repo/_self/{topic}/intent/{semantic-name}-{YYYY-MM-DD}-intent.md`            |
+| Design 预测设计 | `.claude/repo/_self/{topic}/intent/{design-name}-{YYYY-MM-DD}-v{N}-design.md`     |
+| Project 现状 | `.claude/repo/_self/{topic}/project/{date}-v{N}-status.md`              |
+| Project 比较 | `.claude/repo/_self/{topic}/project/compare_{subject}-{date}-v{N}-status.md` |
+| 模块概念阐述 | `.claude/repo/_self/{topic}/project/{module}-{date}-v{N}-concepts.md`     |
 
 生成后展示摘要 + 文件路径，询问是否需调整。
 
 ### Phase 4：迭代
 
 - 用户要求修改 → 回到 Phase 2 → 生成新版本（`v{N+1}`），**旧版保留不删不改**。
-- 对已落地的设计 → 可选生成 `project/{design-name}-design-vs-actual-{YYYY-MM-DD}.md` 对照审计（预测 vs 实际），对照结果回到 Phase 2 推动下一轮设计迭代。
+- 对已落地的设计 → 可选生成 `project/{design-name}-design-vs-actual-{YYYY-MM-DD}-status.md` 对照审计（预测 vs 实际），对照结果回到 Phase 2 推动下一轮设计迭代。
 
 ## 五、自检清单（每次生成前 AI 必须内心确认）
 
@@ -262,5 +282,12 @@ Intent: {标题}
 ☐ 是否只涉及 .md 后缀的文件？
 ☐ 是否没有触碰任何源码文件？
 ☐ project/ 与 intent/ 下是否是全新文件名（不覆盖旧版）？
-☐ 若是 design 文档，命名是否满足 `{design-name}-design-{YYYY-MM-DD}-v{N}.md` 且版本自增？
+☐ 若是 design 文档，命名是否满足 `{design-name}-{YYYY-MM-DD}-v{N}-design.md` 且版本自增？
 ☐ 若是 现状/盘点/比较 文档，是否只写当前现象与问题、没有混入设计建议？
+☐ 若是 模块概念阐述文档，文件名是否为 `project/{module-slug}-{YYYY-MM-DD}-vN-concepts.md`（扁平无子目录）且概念名用的是实际原名？
+
+## 引用索引（按需加载）
+
+| ref | 何时读取 | 路径 |
+| --- | --- | --- |
+| [[概念阐述文档]] | 生成 2d 模块概念阐述文档时（必读） | references/概念阐述文档.md |

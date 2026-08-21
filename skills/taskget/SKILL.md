@@ -59,22 +59,25 @@ flowchart LR
   H --> I[8 解决 + todo done 回填]
 ```
 
-### Step 1 — 取任务：拿你 topic 的全部任务
+### Step 1 — 取任务：拿你 topic 的全部待办
 
 先确定你的 **topic**：从用户上下文推断（如"go 主题"、"文档任务"）；不确定就问一句。
 
-取你 topic 的**全部任务**（open + done 一起），直接 `--topic` 过滤，**不要自己拉全量再拿 JSON 处理**：
+取你 topic 的**全部待办**，一条指令直接过滤，**不要自己拉全量再拿 JSON 处理**：
 
 ```bash
-kvcli todo list --topic <你的topic>            # 表格：该 topic 的待办 + 已完成
-kvcli todo list --topic <你的topic> --json     # JSON：{"open":[...],"done":[...]} 机器可读
+kvcli todo --open --topic <你的topic>            # 表格：该 topic 的全部待办（只读 open，无 done 噪音）
+kvcli todo --open --topic <你的topic> --json     # JSON：纯待办数组，机器可读
 ```
 
-> ⚠️ **禁止** `kvcli todo list --json | python -c "...按 topic 过滤..."` 这套自己过滤的做法——`list --topic` 一步到位。
+> **首选 `todo --open`**：它只读 `todo:open` 一个 KV key，输出纯待办数组——不带已完成历史（done 里有重复 id 的历史记录和长 note，会占用大量上下文）。
+>
+> ⚠️ **禁止** `kvcli todo list --json | python -c "...按 topic 过滤..."` 这套自己过滤的做法——`todo --open --topic` 一步到位。
 
-只取第一条待办时用 `first`：
+需要看**完成历史/回填核对**时（如确认某任务已完成）才用 `list`；只取第一条待办时用 `first`：
 
 ```bash
+kvcli todo list --topic <你的topic> --json     # JSON：{"open":[...],"done":[...]} 含已完成
 kvcli todo first --topic <你的topic> --json   # 带 --topic 时 JSON 含该 topic 的 prompt 字段
 ```
 
@@ -134,7 +137,9 @@ kvcli todo done <id> --result "完成结果摘要"   # 移入 done 并写完成�
 
 | 何时                             | 命令                                                                              |
 | -------------------------------- | --------------------------------------------------------------------------------- |
+| **取某 topic 全部待办（首选）**  | `kvcli todo --open --topic <t> [--json]`                                        |
 | 取某 topic 全部任务（open+done） | `kvcli todo list --topic <t> [--json]`                                          |
+| 取全部待办                       | `kvcli todo --open [--json]`                                                    |
 | 取全部任务                       | `kvcli todo list [--json]`                                                      |
 | 取 topic 第一条 + 提示词         | `kvcli todo first --topic <t> [--json]`                                         |
 | 提交/回填任务                    | `kvcli todo add --topic <t> "文本"` / `kvcli todo done <id> [--result "..."]` |
@@ -146,7 +151,8 @@ kvcli todo done <id> --result "完成结果摘要"   # 移入 done 并写完成�
 | 错误操作                                                                 | 实际后果                                         | 正确做法                                                                                                                    |
 | ------------------------------------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | 直接动手不先确认意图                                                     | 任务文本常是半句话，盲目执行必返工               | 走 Step 2-4：润色 → 摆给用户确认 → 用户补充                                                                               |
-| `kvcli todo list --json` + python 自过滤 topic                         | 每次多写一坨过滤逻辑、易错                       | `kvcli todo list --topic <t>` 一步到位                                                                                    |
+| `kvcli todo list --json` + python 自过滤 topic                         | 每次多写一坨过滤逻辑、易错                       | `kvcli todo --open --topic <t>` 一步到位（只读 open，零 done 噪音） |
+| 用 `todo list --topic` 取待办                                      | done 数组带出重复 id 历史 + 长 note，上下文被大量已完成内容占用 | 领取待办一律用 `todo --open --topic <t>`；需要完成历史时才用 `list` |
 | 解决完不`kvcli todo done <id>`                                         | 任务一直挂 open，队列失真、提交方不知完成        | 解决一条立即回填，`--result` 写明结果                                                                                     |
 | 回填用错 id / 用 done 列表里的 id                                        | `done` 报 `task id=N not found in todo:open` | 用 Step 1`list --topic` 拿到的 open 里的 id                                                                               |
 | 未登录就调 todo 子命令                                                   | 报「未登录」exit 1                               | 先`kvcli auth login`                                                                                                      |
