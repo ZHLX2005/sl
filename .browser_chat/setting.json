@@ -40,7 +40,6 @@
       "name": "高级语言",
       "skills": [
         "uv",
-        "cli-project-template",
         "npm-work-flow"
       ]
     },
@@ -49,7 +48,8 @@
       "name": "场景",
       "skills": [
         "obsidian-repair-unresolved-links",
-        "notion-cli"
+        "notion-cli",
+        "cli-standard"
       ]
     }
   ]
