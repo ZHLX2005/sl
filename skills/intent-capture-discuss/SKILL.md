@@ -1,6 +1,6 @@
 ---
 name: intent-capture-discuss
-description: 当用户希望整理需求、明确目的、描述问题，或提到"生成文档"、"整理意图"、"明确现象"、"讨论项目结构"、"分析完成程度"、"梳理方案"、"对比参考实现"时触发 通过多轮对话收集需求、分析项目现状、对比外部参考实现，最终在项目目录的 .claude/repo/_self/ 下按主题生成结构化文档。纯文档产出，严禁修改任何代码。
+description: 当用户希望整理需求、明确目的、描述问题，或提到"生成文档"、"整理意图"、"明确现象"、"讨论项目结构"、"分析完成程度"、"梳理方案"、"对比参考实现"、"学习/理解项目某模块"、"学习基础知识"时触发 通过多轮对话收集需求、分析项目现状、对比外部参考实现，最终在项目目录的 .claude/repo/_self/ 下按主题生成结构化文档。学习类讨论走学习模式：基础知识落 basic 兜底主题（2e 概念文档），项目学习只产 project/ 支持的文档、不生成 intent。纯文档产出，严禁修改任何代码。
 ---
 # 🔴 铁律（最高优先级，不可违反）
 
@@ -8,8 +8,8 @@ description: 当用户希望整理需求、明确目的、描述问题，或提�
 | - | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1 | **必须在项目目录内创建**                         | 所有文件**仅限**当前项目根目录下的 `.claude/repo/_self/` 路径内。绝对不写到项目外任何位置、不写到 home 目录、不写到系统临时目录。                                                                                             |
 | 2 | **只做分析和文档编写，绝对不修改代码**           | 不创建、不编辑、不删除、不重命名任何源代码文件（包括但不限于`.py .ts .js .vue .go .rs .java .cpp .css .html .json .yaml .toml` 等）。不执行任何 `git commit`、`git add`、构建、测试命令。本 skill 的唯一产出物是 `.md` 文档。 |
-| 3 | **版本不覆盖**                                   | `project/` 下每次生成新文件（含现状文档与 `compare_*` 比较文档），绝不覆写已有版本。旧文档只读。                                                                                                                                                                         |
-| 4 | **现状/盘点/比较类文档 不要给出建议**，只给当前现象与问题 | 约束对象是「记录现状」的文档（`project/` 的现状与 `compare_*`、`intent/` 的常规意图文档 2a）：如实描述"现在是什么样、什么问题"，不写"应该怎么做"。**例外**：`intent/` 下的 Design 预测设计文档（2c）明确承载设计方案与建议——它讨论"打算怎么做"，是意图的延伸，不受本条约约束。                                                                                                                                                                                                                                       |
+| 3 | **版本不覆盖**                                   | `project/`、`basic/` 下每次生成新文件（含现状文档与 `compare_*` 比较文档），绝不覆写已有版本。旧文档只读。                                                                                                                                                                         |
+| 4 | **现状/盘点/比较类文档 不要给出建议**，只给当前现象与问题 | 约束对象是「记录现状」的文档（`project/` 的现状与 `compare_*`、`intent/` 的常规意图文档 2a、`basic/` 的知识概念文档 2e）：如实描述"现在是什么样、什么问题"，不写"应该怎么做"。**例外**：`intent/` 下的 Design 预测设计文档（2c）明确承载设计方案与建议——它讨论"打算怎么做"，是意图的延伸，不受本条约约束。                                                                                                                                                                                                                                       |
 
 > ⚠️ 若 AI 在执行过程中有任何偏离上述规则的倾向，用户应立即叫停。AI 自身也应在每次文件操作前自检：目标路径是否在 `.claude/repo/_self/` 内？是否只涉及 `.md` 文件？
 
@@ -19,23 +19,26 @@ description: 当用户希望整理需求、明确目的、描述问题，或提�
 
 {项目根目录}/
 └── .claude/repo/_self/
-    └── {topic-slug}/                  # 主题目录，kebab-case
-        ├── intent/                    # 原始意图 + 多版本设计稿（为什么做、打算怎么做）
-        │   ├── {semantic-name}-{YYYY-MM-DD}-intent.md       # 常规意图文档
-        │   ├── {design-name}-{YYYY-MM-DD}-v1-design.md      # Design 预测设计文档（设计想法 + 版本迭代）
-        │   ├── {design-name}-{YYYY-MM-DD}-v2-design.md      # 同一想法的迭代版本，旧版保留
-        │   └── ...
-        └── project/                   # 解释当前版本的项目现状（扁平：全部平铺，不建子目录）
-            ├── {YYYY-MM-DD}-v1-status.md       # 现状分析，首次产出
-            ├── {YYYY-MM-DD}-v2-status.md       # 现状分析，迭代更新
-            ├── {module-slug}-{YYYY-MM-DD}-v1-concepts.md   # 模块概念阐述，首次产出
-            ├── {module-slug}-{YYYY-MM-DD}-v2-concepts.md   # 概念阐述迭代，旧版保留
-            ├── compare_{subject}-{YYYY-MM-DD}-v1-status.md   # 比较文档（外部项目实现 vs 本项目实现程度）
-            └── ...
+    ├── {topic-slug}/                  # 常规主题目录，kebab-case
+    │   ├── intent/                    # 原始意图 + 多版本设计稿（为什么做、打算怎么做）——仅意图模式创建
+    │   │   ├── {semantic-name}-{YYYY-MM-DD}-intent.md       # 常规意图文档
+    │   │   ├── {design-name}-{YYYY-MM-DD}-v1-design.md      # Design 预测设计文档（设计想法 + 版本迭代）
+    │   │   ├── {design-name}-{YYYY-MM-DD}-v2-design.md      # 同一想法的迭代版本，旧版保留
+    │   │   └── ...
+    │   └── project/                   # 解释当前版本的项目现状（扁平：全部平铺，不建子目录）
+    │       ├── {YYYY-MM-DD}-v1-status.md       # 现状分析，首次产出
+    │       ├── {YYYY-MM-DD}-v2-status.md       # 现状分析，迭代更新
+    │       ├── {module-slug}-{YYYY-MM-DD}-v1-concepts.md   # 模块概念阐述，首次产出
+    │       ├── {module-slug}-{YYYY-MM-DD}-v2-concepts.md   # 概念阐述迭代，旧版保留
+    │       ├── compare_{subject}-{YYYY-MM-DD}-v1-status.md   # 比较文档（外部项目实现 vs 本项目实现程度）
+    │       └── ...
+    └── basic/                         # 兜底主题：基础知识学习（学习模式专用，扁平无子目录）
+        └── {subject-slug}-{YYYY-MM-DD}-vN-concepts.md       # 知识概念沉淀（如 epoll-basics-2026-08-27-v1-concepts.md）
 
 **命名规则：**
 
 - 主题名：从用户描述中提炼，小写 + 连字符（`docx-thesis-style-pipeline-design`）
+- 兜底主题 `basic`：学习**与本项目无关的基础知识**、或提炼不出明确主题时，主题固定用 `basic`——不建 `intent/`、`project/` 子目录，2e 概念文档直接扁平放在 `_self/basic/` 下；不同知识主题用 `subject-slug` 区分（`epoll-basics`、`raft-consensus`），版本按 subject 各自自增
 - 命名总则：`{语义短名}-{YYYY-MM-DD}[-v{N}]-{类型后缀}.md`——类型后缀见名知意（`intent` / `design` / `concepts` / `status`）；文档**全部扁平平铺**，不建更深层子目录
 - Project 现状文档：`{YYYY-MM-DD}-vN-status.md`（N 自增，从 1 开始）
 - 模块概念阐述文档：`{module-slug}-{YYYY-MM-DD}-vN-concepts.md`（扁平放 project/ 下；module-slug 为模块语义短名 kebab-case；N 按 module 各自独立自增，旧版保留）
@@ -43,7 +46,7 @@ description: 当用户希望整理需求、明确目的、描述问题，或提�
 - Intent 常规意图文档：`{semantic-name}-{YYYY-MM-DD}-intent.md`（如 `initial-request-2026-08-14-intent.md`、`refined-goal-2026-08-14-intent.md`）
 - Design 预测设计文档：`{design-name}-{YYYY-MM-DD}-v{N}-design.md`（如 `casbin-hybrid-2026-08-14-v1-design.md`）；`design-name` 为该设计想法的语义化短名（kebab-case）；N 从 1 自增，**同一 design-name 的迭代不覆盖旧版**；不同想法用不同 design-name 并存，可互相引用对比
 
-> **目录分工原则**：`intent/` 存**原始意图 + 多个版本的设计稿**（为什么做、打算怎么做）；`project/` 存**对当前版本项目现状的解释**（现在是什么样：现状分析、模块概念阐述、横向比较）。整个 skill 的原则是**讨论落文档**——多轮对话中形成的理解与决定，最终都要沉淀为上述结构化文档。
+> **目录分工原则**：`intent/` 存**原始意图 + 多个版本的设计稿**（为什么做、打算怎么做）；`project/` 存**对当前版本项目现状的解释**（现在是什么样：现状分析、模块概念阐述、横向比较）；`basic/` 存**通用基础知识的学习沉淀**（学习模式专用兜底主题，与本项目无关）。整个 skill 的原则是**讨论落文档**——多轮对话中形成的理解与决定，最终都要沉淀为上述结构化文档。
 >
 > 比较文档归属 `project/` 而非 `intent/`：compare 对比的是**外部项目的实现方法**（开源库、参考仓库）与**本项目当前实现该主题的程度**，属于现状盘点，不是意图表达，也**不是对比设计稿**（多份 design 稿之间的取舍走 2c 的"想法对比"，不产出 compare 文档）。因此它同样受版本号约束，旧版只读保留。
 
@@ -215,23 +218,82 @@ Intent: {标题}
 
 核心约束：概念阐述属于**现状盘点**性质——概念名必须是项目/对话中实际使用的原名，不自创同义词；未命名实体单独列出并建议命名，不虚构。
 
+### 2e · 基础知识概念文档 `basic/{subject-slug}-{YYYY-MM-DD}-vN-concepts.md`（学习模式专用，扁平无子目录）
+
+**用途：** 当讨论的本质是**学习与本项目无关的基础知识**——用户想搞懂某个概念/机制的原理（epoll、Raft、HTTP/3、AOT 编译），没有项目上下文可分析、也提炼不出明确 topic-slug。此时主题固定为兜底 `basic`，按知识主题产出概念文档，沉淀为可复用的学习笔记。**仅基础知识模式产出；意图模式、项目学习模式不产出。**
+
+**触发方式：**
+
+- 用户说"学习一下 X"、"讲讲 X 的原理/是什么"、"解释一下 X"、"X 和 Y 有什么区别"（X/Y 是本项目外的基础概念）
+- 用户要理解某个通用机制，不涉及具体项目模块
+
+**命名规则：** `{subject-slug}-{YYYY-MM-DD}-vN-concepts.md`，如 `epoll-basics-2026-08-27-v1-concepts.md`；`subject-slug` 为该知识主题的语义短名（kebab-case），N 按 subject 各自自增，旧版保留不删不改。全部扁平放在 `_self/basic/` 下，**不建 `intent/`、`project/` 子目录**。
+
+**与 2d 的区别：** 2d 沉淀**项目内**模块的概念命名体系（两层指称 L1/L2，为后续提问提供准确指称）；2e 是**项目外通用知识**的学习笔记，重点是讲清楚原理与心智模型，不涉及项目内命名。
+
+**模板：**
+
+```markdown
+# {subject-slug} 学习笔记（{YYYY-MM-DD} v{N}）
+
+> **Topic:** basic
+> **类型:** 学习模式(基础知识概念)
+> **版本:** v{N}（相对上一版：新增/修正/保留了什么）
+
+## 1. 核心概念
+一句话定义 + 一段话讲清它是什么。
+
+## 2. 解决什么问题
+没有它时是什么样，有了它解决了什么（背景与动机）。
+
+## 3. 关键机制 / 组成
+逐条列出组成或机制：{概念/组件} — 一句话解释 — 与整体的关系。
+（可用代码块/图示辅助，注意只做讲解，不落任何实现）
+
+## 4. 类比与心智模型
+一个通俗类比 + 一句记忆要点，让读者 30 秒抓住核心。
+
+## 5. 常见误区
+{常见错误理解 1}
+{常见错误理解 2}
+
+## 6. 延伸主题
+{相关概念，可触发新的 basic 学习}
+```
+
+受铁律 4 约束：这是知识现状的讲解，如实讲"是什么、怎么运作"，**不给"你应该在项目里怎么用"的落地建议**——落地到本项目属意图/设计范畴，另走本 skill 的意图模式。
+
 ## 三、工作流程
 
-### Phase 1：主题确认与目录初始化
+### Phase 1：模式判定 + 主题确认与目录初始化
 
-1. 从用户输入中提炼核心主题，提议 `topic-slug`，用户确认
-2. 在**当前项目目录**下确保路径存在：
-   - `.claude/repo/_self/{topic-slug}/project/`
-   - `.claude/repo/_self/{topic-slug}/intent/`
-3. 若 `project/` 已有文件，列出「现状文档」「比较文档」的版本历史；若 `intent/` 已有 design 文档，列出各 `design-name` 的版本历史；分别告知本次将生成 `v{N+1}`
-4. **自检**：确认创建路径以 `.claude/repo/_self/` 开头，否则中止并报错
+**先判定讨论模式，再定主题。** 模式决定产出哪些文档类型：
+
+| 模式 | 判定特征（用户话术举例） | 产出文档 | 主题与目录 |
+| --- | --- | --- | --- |
+| **意图模式** | "想做个 X"、"整理需求"、"梳理方案/实现路径"、"怎么设计/怎么做"、"明确目的" | intent（2a）+ design（2c）+ project（2b/2d 可选） | 提炼 `topic-slug`，建 `intent/` + `project/` |
+| **项目学习模式** | "讨论项目结构"、"分析完成程度"、"学习/理解项目某模块"、"对比参考实现/别人怎么做的"、"总结这个模块的概念" | 仅 `project/`：status（现状）· concepts（2d 概念阐述）· compare（2b 比较），**不生成 intent** | 提炼 `topic-slug`，**只建 `project/`，不建 `intent/`** |
+| **基础知识模式** | "学习一下 X"、"讲讲 X 的原理/是什么"、"解释一下 X"（X 为本项目外基础概念）、提炼不出主题 | 仅 2e 知识概念文档（`basic/` 下） | 主题固定 `basic`，**只建 `basic/`**，按 subject-slug 命名 |
+
+> **模式判定提示**：同一句话可能模糊（"分析一下 X 的实现"），用 AskUserQuestion 问一句确认模式，再进入对应流程——学习项目 ≠ 要给建议/写意图，不产 intent 是本 skill 学习模式的铁律延伸。
+
+1. **判定模式**（上表），与用户确认后进入对应分支
+2. **定主题**：
+   - 意图/项目学习模式 → 从用户输入提炼核心主题，提议 `topic-slug`，用户确认
+   - 基础知识模式 → 主题固定 `basic`，从输入提炼 `subject-slug` 作为文档名
+3. 在**当前项目目录**下确保路径存在：
+   - 意图模式 → `.claude/repo/_self/{topic-slug}/intent/` + `.claude/repo/_self/{topic-slug}/project/`
+   - 项目学习模式 → 仅 `.claude/repo/_self/{topic-slug}/project/`
+   - 基础知识模式 → 仅 `.claude/repo/_self/basic/`
+4. 若目标目录已有文件，列出各文档类型的版本历史，告知本次将生成 `v{N+1}`
+5. **自检**：确认创建路径以 `.claude/repo/_self/` 开头，否则中止并报错
 
 ### Phase 2：多轮讨论
 
-**① 分析现状**（只读扫描，不改动任何文件）
-
-- 扫描项目中与主题相关的目录和文件
-- 给出结构概览
+**① 分析现状**（只读扫描，不改动任何文件。按模式分流）：
+- 意图模式 → 扫描项目中与主题相关的目录和文件，给出结构概览
+- 项目学习模式 → 定位并阅读目标模块（可用 /project-index-reader），梳理其结构、职责、依赖
+- 基础知识模式 → 无需扫描项目，直接进入知识讲解讨论（② 中从"背景与动机""现状盘点"等适用维度选取）
 
 **② 逐维探讨**（按需选取）：
 
@@ -259,21 +321,24 @@ Intent: {标题}
 
 ### Phase 3：文档生成
 
-用户发出"可以了 / 生成文档 / 确认 / 总结"信号后执行。
+用户发出"可以了 / 生成文档 / 确认 / 总结"信号后执行。**按模式生成，学习模式不产 intent**：
 
-| 文档类型     | 输出路径                                                                    |
-| ------------ | --------------------------------------------------------------------------- |
-| Intent 意图  | `.claude/repo/_self/{topic}/intent/{semantic-name}-{YYYY-MM-DD}-intent.md`            |
-| Design 预测设计 | `.claude/repo/_self/{topic}/intent/{design-name}-{YYYY-MM-DD}-v{N}-design.md`     |
-| Project 现状 | `.claude/repo/_self/{topic}/project/{date}-v{N}-status.md`              |
-| Project 比较 | `.claude/repo/_self/{topic}/project/compare_{subject}-{date}-v{N}-status.md` |
-| 模块概念阐述 | `.claude/repo/_self/{topic}/project/{module}-{date}-v{N}-concepts.md`     |
+| 文档类型     | 模式       | 输出路径                                                                    |
+| ------------ | ---------- | --------------------------------------------------------------------------- |
+| Intent 意图  | 意图       | `.claude/repo/_self/{topic}/intent/{semantic-name}-{YYYY-MM-DD}-intent.md`            |
+| Design 预测设计 | 意图     | `.claude/repo/_self/{topic}/intent/{design-name}-{YYYY-MM-DD}-v{N}-design.md`     |
+| Project 现状 | 意图/项目学习 | `.claude/repo/_self/{topic}/project/{date}-v{N}-status.md`              |
+| Project 比较 | 意图/项目学习 | `.claude/repo/_self/{topic}/project/compare_{subject}-{date}-v{N}-status.md` |
+| 模块概念阐述 | 意图/项目学习 | `.claude/repo/_self/{topic}/project/{module}-{date}-v{N}-concepts.md`     |
+| 知识概念     | 基础       | `.claude/repo/_self/basic/{subject-slug}-{date}-v{N}-concepts.md` |
+
+> 项目学习模式只产 `project/` 下的 status / concepts / compare；基础知识模式只产 `basic/` 下的 2e 知识概念文档。
 
 生成后展示摘要 + 文件路径，询问是否需调整。
 
 ### Phase 4：迭代
 
-- 用户要求修改 → 回到 Phase 2 → 生成新版本（`v{N+1}`），**旧版保留不删不改**。
+- 用户要求修改 / 追加讨论（含基础知识模式继续学习同一 subject）→ 回到 Phase 2 → 生成新版本（`v{N+1}`），**旧版保留不删不改**。
 - 对已落地的设计 → 可选生成 `project/{design-name}-design-vs-actual-{YYYY-MM-DD}-status.md` 对照审计（预测 vs 实际），对照结果回到 Phase 2 推动下一轮设计迭代。
 
 ## 五、自检清单（每次生成前 AI 必须内心确认）
@@ -281,10 +346,13 @@ Intent: {标题}
 ☐ 目标路径是否在 当前项目根目录/.claude/repo/_self/ 之内？
 ☐ 是否只涉及 .md 后缀的文件？
 ☐ 是否没有触碰任何源码文件？
+☐ 模式判定是否与讨论内容一致（意图 / 项目学习 / 基础知识）？
 ☐ project/ 与 intent/ 下是否是全新文件名（不覆盖旧版）？
+☐ 项目学习模式是否**没有生成任何 intent/design 文档**？
 ☐ 若是 design 文档，命名是否满足 `{design-name}-{YYYY-MM-DD}-v{N}-design.md` 且版本自增？
 ☐ 若是 现状/盘点/比较 文档，是否只写当前现象与问题、没有混入设计建议？
 ☐ 若是 模块概念阐述文档，文件名是否为 `project/{module-slug}-{YYYY-MM-DD}-vN-concepts.md`（扁平无子目录）且概念名用的是实际原名？
+☐ 若是 基础知识概念文档（2e），是否在 `basic/` 下扁平命名 `{subject-slug}-{YYYY-MM-DD}-vN-concepts.md`、且未混入"如何在项目里用"的建议？
 
 ## 引用索引（按需加载）
 
