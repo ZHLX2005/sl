@@ -429,6 +429,7 @@ dist/
 | `key_board_3` | 拆分本 skill 时，把 HTTP 测试 / npm 工具 / Python 工具各自沉淀为 reference |
 | `k6-isolated-load-test` | HTTP 性能测试优先用 k6-isolated-load-test（已封装 k6 + .tool/k6） |
 | `lottery-workflow` (ref) | 「多套风格并行 subagent + 文件投票」工作流；产物落到 `.tool/<test-name>/design/`，与 .tool 隔离规范一致 |
+| `flood-fill-image-script` (ref) | 图像处理专项脚本（洪涌法去白底 + 连通域岛屿提取）；脚本与 pillow/numpy/scipy 依赖隔离到 `.tool/image-extractor/`，避免污染项目 `requirements.txt` |
 
 ## 快速决策树
 
@@ -442,6 +443,9 @@ dist/
   │
   ├─ 是 JSON / CSV / 数据处理？
   │    └─ → .tool/python-helper/ (Python pandas / json)
+  │
+  ├─ 是图像处理（去白底 / 抠图 / 色块提取）？
+  │    └─ → .tool/image-extractor/ (Python pillow + scipy + ndimage.label)，详见 [[flood-fill-image-script]]
   │
   ├─ 是构建 / 类型检查 / 代码转换？
   │    └─ → .tool/esbuild-checker/ 或 .tool/eslint-lab/ (npm)
@@ -458,3 +462,12 @@ dist/
   └─ 是「多套风格并行生成让用户挑」的工作流（lottery）？
        └─ → .tool/<test-name>/design/ + 并行 subagent，详见 [[lottery-workflow]]
 ```
+
+## references 索引
+
+按需加载的特化专项脚本指南：
+
+| ref | 何时读取 | 路径 |
+| --- | --- | --- |
+| [[flood-fill-image-script]] | 图像去白底 / 抠图 / 色块岛屿提取 / connected component 分离 | references/flood-fill-image-script.md |
+| [[lottery-workflow]] | 多套风格并行 subagent + 文件投票（自迭代版） | references/lottery-workflow.md |
