@@ -6,6 +6,119 @@
 >
 > 本文档原为 `styles-skill/references/lottery-workflow.md`，归档到 tool-isolation 后，路径约定改为 `.tool/<test-name>/design/`（与 .tool 隔离规范保持一致，所有产物落进隔离区）。
 
+## ⚠️ 场景约束:移动端应用 HTML 原型(UX 对比类)
+
+> **触发条件**: 用户要求生成 Android / iOS / 移动端 HTML 原型,**目的是对比 UX 模式**(事件添加 / 导航 / 列表 vs 网格等),不是单纯做视觉设计。
+>
+> 此时本 lottery 流程必须叠加以下硬约束,否则会产出艺术废稿。
+
+### 核心原则
+
+> **移动端应用原型的目标是「模拟真实 App 的 UX 模式」,不是「视觉艺术探索」。**
+
+错误模式:把 [[frontend-design]] 的"bold aesthetic direction"直接套到移动端应用原型上,导致生成物像概念海报 / 艺术装置,无法用于对比 UX 决策。
+
+正确模式:每套原型都明确**参考一款真实在用的 App**,视觉风格贴近该 App 的真实呈现,差异在**交互模式 / 数据模型 / 信息架构**,不在配色或版式。
+
+### 反模式(已知踩坑)
+
+| 反模式 | 来源 | 后果 | 替代 |
+|--------|------|------|------|
+| Paper editorial / Kinfolk 杂志感 | frontend-design 默认建议 | 像纸面 planner,不像软件 | 改参考 Apple Calendar / Notion Calendar 的纸感版 |
+| Brutalist terminal / CRT 监视器 | frontend-design 默认建议 | 像赛博朋克终端,不像 App | 改参考命令行工具,但 mobile 端不要用 |
+| Retro / vaporwave / synthwave | frontend-design 默认建议 | 像 80 年代游戏,不像生产力 App | 不要用于生产力工具原型 |
+| Emoji 作为装饰图标 | AI 偷懒常用 | 显得低龄、虚假 | 改用 SVG 线条图标或文字标签 |
+| 软 organic / wellness app | frontend-design 默认建议 | **可接受** —— 是真实产品类别 (Calm / Notion) | 保留 |
+
+**关键判定**:用户第一眼看上去会不会觉得"这是一个真 App"?
+
+- ✅ 是 → 进入对比集
+- ❌ 像海报/概念图/艺术装置 → 剔除(即使视觉惊艳)
+
+### 正向模板:每套原型必须声明参考产品
+
+> 用户在 prompt 里直接给参考产品,或者 subagent 在生成前先选一个真实 App 作为风格锚点。
+
+```html
+<!-- 文件头注释 -->
+<!--
+  variant-X-{参考产品}.html
+  参考:{产品名} {版本/年份}
+  视觉锚点:{配色 / 字体 / 间距 / 组件库}
+  UX 差异点:{该原型相对参考产品的刻意偏离,如添加 NLP、改 FAB 位置}
+-->
+```
+
+参考产品候选(移动端日历 / 任务类):
+
+| 产品 | 风格类别 | 关键 UX 决策 |
+|------|---------|-------------|
+| Apple Calendar (iOS 17) | iOS native | tap day → Day view → "+" → 全字段表单 |
+| Google Calendar (Android) | Material 3 | FAB → Quick create → 多 calendar 切换 |
+| Notion Calendar (2023+) | Minimal db | FAB → 单屏全字段 + 内联 picker |
+| TickTick (滴答清单) | Task+Calendar | 红色 FAB → NL hint + 优先级 P1-P4 |
+| Fantastical (iOS/macOS) | NL-first | 文本字段 → 实时 NL 解析 |
+| 飞书日历 (Lark) | 稀疏月视图 | 月网格铺满 + 长按快速添加 |
+| Timepage (Moleskine) | Weather+events | 不是事件添加原型的好参考 |
+| Todoist | GTD 任务流 | 不算日历,但 quick-add UX 可借鉴 |
+
+### 数据驱动 UX 的展示义务
+
+每套移动端原型**必须包含**(这是原型对比的核心维度):
+
+1. **事件添加流程** —— 用户最频繁的操作,至少演示 1-2 种添加路径(FAB / 长按 / NL 解析 / 模板)
+2. **数据模型可视化** —— 在角落放一个小 `dev-note` / `<pre>` 块显示 JSON,体现"驱动这个 UI 的数据长什么样"
+3. **典型列表 / 网格内容** —— 不要给空列表,塞 10-20 个样例数据(刻意制造密集日来展示状态,如 8/29 有 5 个事件)
+4. **空状态** —— 一两个空状态的截图 / 卡片(空 day / 空 inbox)
+5. **详情 → 编辑 → 删除闭环** —— 点事件 → 编辑 → 保存 → 回到列表,这条路径必须能跑通
+
+### 移动端硬约束(踩坑必检)
+
+| 约束 | 数值 / 做法 |
+|------|-----------|
+| 视口宽 | 414px(iPhone 14 Pro Max 标称) 或 375px(iPhone SE) |
+| 视口高 | 800-900px(单屏) 或可滚动长页(多屏) |
+| 触摸目标 | ≥ 44 × 44 px(iOS HIG) / ≥ 48 × 48 dp(Material) |
+| 字体 | iOS / Android 系统字体回退优先,或 SF Pro / Roboto / 跨平台如 Manrope / Inter Tight |
+| 配色 | 用 ColorScheme 派生(light/dark 各一套),避免硬编码颜色让 dark mode 翻车 |
+| Bottom sheet | 用 `transform: translateY(100% → 0)`,cubic-bezier(0.32, 0.72, 0, 1) |
+| FAB | 圆形 52-60px,bottom-right 18px,主色填充 |
+| 长按 | 480ms 触发,触发后给出明确反馈(震动 / 视觉) |
+
+### 多套对比的索引约定
+
+多套原型并存时,在工具目录根放 `index.html`,横向对比展示:
+
+- 2 × N 网格(iframe 嵌入每套原型)
+- 每套 header 标注:编号 / 名称 / 参考产品 / 核心 UX 决策
+- 底部对比表:横向列出「触发方式 / 输入范式 / 颜色模型 / 数据扩展 / 自然语言」等维度
+
+用户判定后,被剔除的原型**直接删除**而不是归档 —— 它们对生产无价值,留在目录里只增加认知负担。如果 git 历史需要,删除前 `git log --diff-filter=D -- <file>` 可找回。
+
+### 案例:本次日历重构的执行流(`e641e97b` 后)
+
+```
+用户: 「生成 html 几套手机端格式的 html 风格 重点是 ux 别使用特殊的 各种细节体现」
+      → 派 3 个 subagent (paper / brutalist / soft)
+
+用户反馈: 「variant-c-soft 只有这一个才是正常的软件呀 其他生成的太奇怪了」
+      → 删除 paper + brutalist
+      → 用户进一步指明: 「重点是基于数据驱动的 ux 事件添加的方式 notion 日历 滴答清单日历 什么经典项目」
+      → 派 3 个 subagent 按真实产品建模 (notion / ticktick / fantastical)
+      → 用户点名: 「飞书日历 月视图 数字平铺整个屏幕 然后方便添加日期」
+      → 第 5 套: variant-g-feishu
+
+最终 .tool/calendar-mockup/:
+  index.html           ← 横向对比索引
+  variant-c-soft.html  ← 软风格 (wellness, 唯一保留的「无参考产品」原型)
+  variant-d-notion.html    ← Notion Calendar
+  variant-e-ticktick.html  ← TickTick
+  variant-f-fantastical.html ← Fantastical
+  variant-g-feishu.html    ← 飞书日历 (用户点名)
+```
+
+教训:第一轮盲目套用 frontend-design 的「bold aesthetic」导致 2/3 废稿;**第二轮每次都锁定真实产品参考后,产出可直接进入 UX 对比决策**。
+
 ## 触发条件
 
 当以下任一情况触发（AI 自动触发，不需要等用户开口）：

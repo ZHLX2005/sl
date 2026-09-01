@@ -121,3 +121,155 @@ for idx in range(1, n + 1):
 - [ ] 有最小面积阈值滤水印/杂点
 - [ ] 全程 `uv run python3`，依赖装在 `.tool/image-extractor/.venv/`
 - [ ] 至少 Read 一张输出图做视觉验证
+
+## 关键 API 速查（项目无关）
+
+去白底 + 岛屿提取涉及的核心 API 全在 `numpy` + `scipy.ndimage` + `PIL` 标准组合里。
+下表列出每个 API 的精确用法与适用环节，按"流水线顺序"组织：
+
+| # | API | 来源 | 作用 | 典型用法 |
+|---|-----|------|------|---------|
+| 1 | `Image.open(p).convert("RGB")` | PIL | 读图 → RGB（剥离 alpha/调色板） | 入口 |
+| 2 | `np.asarray(rgb_img)` | numpy | PIL → (H,W,3) uint8 ndarray | 入口 |
+| 3 | `np.all(arr >= T, axis=2)` | numpy | 沿通道维"全部满足" → (H,W) bool | 白色候选 |
+| 4 | `np.max(arr, axis=2)` / `np.min(arr, axis=2)` | numpy | 通道最大/最小 → (H,W) | 颜色阈值 |
+| 5 | `ndimage.label(mask)` | scipy | 连通域标记 → `(lbl, n)`，lbl 同 label 同号 | 洪涌 / 岛屿 |
+| 6 | `np.isin(lbl, list)` | numpy | label 集合成员 → (H,W) bool | 边框连通筛选 |
+| 7 | `ndimage.gaussian_filter(arr, sigma=s)` | scipy | 高斯模糊 → 软蒙版（边缘抗锯齿） | 蒙版优化 |
+| 8 | `np.where(cond, x, y)` | numpy | 条件选择 | 软阈值化（>0.5 → 255） |
+| 9 | `np.dstack([rgb, alpha])` | numpy | 沿第三轴堆叠 → (H,W,4) RGBA | 构造输出 |
+| 10 | `Image.fromarray(arr, "RGBA").save(p)` | PIL | (H,W,4) → 透明 PNG | 写出 |
+| 11 | `arr[py0:py1, px0:px1]` | numpy | bbox 切片 → crop | 岛屿裁剪 |
+| 12 | `arr[..., 0]` / `arr[..., 2]` | numpy | 取 R / B 通道 | 暖色判别 |
+| 13 | `arr.astype(int)` / `.astype(np.float32)` | numpy | 类型提升（避免 uint8 减法下溢） | 通道差计算 |
+| 14 | `&` `|` `~` | numpy | element-wise 布尔运算 | 多蒙版合并 |
+
+**易错点**：
+- `np.all(arr >= T, axis=2)`：通道维 axis 是 **2**（HWC 布局），不是 -1。
+- `ndimage.label(mask)` 输入必须是 **bool 或 0/1 int**，不能是浮点 0/1。
+- 通道差 `(R - B).astype(int)` 必须先 `astype(int)`——uint8 减法会下溢（255 → 1）。
+- `gaussian_filter` 输入浮点，输出浮点；最后 `> 0.5` 阈值化回 uint8。
+
+## 典型变体（实战沉淀）
+
+> 以下 4 个变体是真实场景提炼，与"骨架代码"正交——按需叠加。
+
+### 变体 1：按颜色精修蒙版（剔除阴影 / 保留装饰色）
+
+**问题**：原图含浅灰阴影、金/银装饰、杂色等"非白非黑"前景，直接连通域会把它们一起切走。
+
+**解法**：分两层蒙版——先识别「主体色」再「剔除干扰色」。
+
+```python
+# 通道极值
+max_v = np.max(crop_rgb, axis=2)
+min_v = np.min(crop_rgb, axis=2)
+
+# 浅灰阴影判别：max > 180 且 max-min ≤ 15（亮度高但饱和度极低）
+SHADOW_MAX, SHADOW_RANGE = 180, 15
+is_shadow = (max_v > SHADOW_MAX) & ((max_v - min_v) <= SHADOW_RANGE)
+
+# 黑色主体判别：暗像素 OR 暖色像素（金边 R-B > 30）
+BLACK_PIECE_MAX_RGB, GOLD_R_MINUS_B = 150, 30
+is_dark = max_v <= BLACK_PIECE_MAX_RGB
+is_warm = (crop_rgb[..., 0].astype(int) - crop_rgb[..., 2].astype(int)) > GOLD_R_MINUS_B
+is_piece = is_dark | is_warm
+
+# 蒙版 = 主体 ∩ 非阴影 ∩ 原前景
+refined = is_piece & ~is_shadow & crop_mask
+```
+
+**关键洞察**：不要一次性 `mask = ~is_white` 把所有非白当主体。要分"主体 / 干扰"两层。
+**适用场景**：图标含阴影、棋盘金边、UI 含高光/反光等。
+
+### 变体 2：高斯模糊 + 重阈值（边缘抗锯齿）
+
+**问题**：裁剪出来的透明 PNG 边缘锯齿明显（png 256 级 alpha 没有中间值）。
+
+**解法**：把布尔蒙版转 float → 高斯模糊 → 0.5 阈值回 uint8。
+
+```python
+soft = ndimage.gaussian_filter(rough.astype(np.float32), sigma=0.7)
+alpha = np.where(soft > 0.5, 255, 0).astype(np.uint8)
+```
+
+**σ 经验值**：
+
+| σ | 效果 |
+|---|------|
+| 0.0 | 不模糊，保留锯齿 |
+| 0.5 | 极轻微平滑，硬边缘首选 |
+| 0.7 | 标准抗锯齿（推荐） |
+| 1.0 | 边缘明显柔化 |
+| ≥ 2.0 | 细节丢失，仅适合超写实风格 |
+
+**进阶**：要真透明渐变（半透明描边）可省掉 `> 0.5` 阈值，直接 `soft * 255`。
+
+### 变体 3：岛屿排序（按行优先 + 列次之）
+
+**问题**：连通域 label 顺序随机（按扫描顺序），用户看到的岛屿列表顺序不符合视觉阅读习惯。
+
+**解法**：按 bbox 中心坐标做 `(row, cx)` 二元排序——"先上后下、先左后右"。
+
+```python
+def sort_key(item: dict) -> tuple[int, int]:
+    cy, cx = item["center"][1], item["center"][0]
+    # 上下两段式（适合双排棋盘/双行图）
+    row = 0 if cy < h // 2 else 1
+    return (row, cx)
+
+islands.sort(key=sort_key)
+```
+
+**替代方案**：
+- 固定行高：`row = cy // ROW_HEIGHT`（适合规整表格）
+- 自适应行高：先 KMeans 聚类 cy，再按聚类顺序排 cx
+- 阅读顺序（中文 / 英文 / 数字）：按 `cy` 升序，同行按 `cx` 升序。
+
+### 变体 4：bbox + padding 留白（避免切到棋子边）
+
+**问题**：bbox 紧贴前景边缘，裁出来的图没有视觉呼吸空间。
+
+**解法**：bbox 各边外扩 N 像素，越界用 `max(0, ...)` / `min(h, ...)` 截断。
+
+```python
+PADDING = 20
+py0, py1 = max(0, y0 - PADDING), min(h, y1 + PADDING)
+px0, px1 = max(0, x0 - PADDING), min(w, x1 + PADDING)
+```
+
+**PADDING 经验值**：
+
+| 图幅尺寸 | PADDING | 说明 |
+|---------|---------|------|
+| < 200px | 10 | 小图标紧凑留白 |
+| 200-500px | 20 | 标准图标 |
+| 500-1500px | 30-50 | 大图 / 棋子 |
+| > 1500px | 80+ | 海报级 |
+
+## 参数调优速查
+
+按"问题 → 调哪个参数 → 方向"组织：
+
+| 现象 | 调谁 | 方向 |
+|------|------|------|
+| 浅灰阴影没被剔除（残留在透明底上） | `SHADOW_MAX` ↑ / `SHADOW_RANGE` ↓ | 收紧阴影条件 |
+| 金边 / 装饰色被当作阴影误删 | `GOLD_R_MINUS_B` ↓ | 放宽暖色判别 |
+| 棋子深色边缘丢失（半透明变全透明） | `BLACK_PIECE_MAX_RGB` ↑ | 提亮主体判别 |
+| 小图标被 `MIN_AREA` 滤掉 | `MIN_AREA` ↓ | 按目标岛屿大小调 |
+| 透明 PNG 边缘锯齿 | `EDGE_SMOOTH_SIGMA` ↑（如 0.7 → 1.0） | 增加模糊 |
+| 内部白（如眼睛高光）被洪涌误删 | 加大 `WHITE_THRESHOLD` 没用（洪涌只看边框连通）→ 改用更宽松的内部白保留策略：把 `np.all(rgb >= T)` 换成 `np.mean(rgb, axis=2) >= T` | 改白色定义 |
+| 边框留白有水印残留 | 加 MAX_BOTTOM_Y 或 MAX_TOP_Y 排除指定行 | Y 范围过滤 |
+| 岛屿列表顺序不符合视觉习惯 | 用变体 3 的 sort_key 调整 | 改排序键 |
+| 裁剪图边缘顶到边界 | 加大 `PADDING` | 留白扩展 |
+
+## 反模式速查
+
+| 反模式 | 为何不行 |
+|--------|---------|
+| `mask = (rgb != [255,255,255]).all(axis=2)` | 直接反色——内部白（眼睛、肚皮）一起被删 |
+| `mask = np.all(rgb >= 200, axis=2)` 一次完成 | 把"白候选"和"非白前景"混为一谈，无法做边框洪涌 |
+| 手动遍历 `for y in range(h): for x in range(w):` | O(H*W) Python 循环太慢，必须走 numpy 矢量化 |
+| `from PIL import Image` 直接转 numpy 用 `np.array` | `np.array` 会复制但保留 dtype，`np.asarray` 在可能时共享内存（更快） |
+| 不用 `convert("RGB")` 直接读 | PNG 带 alpha / 调色板会得到 RGBA / P 模式，shape 不一致会爆 |
+| `gaussian_filter(mask, sigma=0.7)` 直接传 bool | bool 不支持模糊，必须先 `.astype(np.float32)` |
