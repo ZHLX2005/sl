@@ -218,8 +218,9 @@ key_board_3 在演化链路上，承接 key_board_2 创建出来的 skill，做�
 
 ## 引用索引（按需加载）
 
-| ref | 何时读取                                            | 路径                           |
-| --- | --------------------------------------------------- | ------------------------------ |
-| [[场景C-沉淀为ref]]    | 触发场景 C 时（最频繁）                             | references/场景C-沉淀为ref.md  |
-| [[merge-skill-专项]]    | 用户说"合并 skill"时                                | references/merge-skill-专项.md |
+| ref | 何时读取 | 路径 |
+| --- | --- | --- |
+| [[场景C-沉淀为ref]]    | 触发场景 C 时（最频繁） | references/场景C-沉淀为ref.md  |
+| &nbsp;&nbsp;↳ [[references-Diversion]] | **场景 C 的次级案例**：已有的 references/ 是否需要按"底座/场景案例"或"开发人员/对接人员"等角色再切一层的判断整理。**不常驻读取**——仅当用户主动要求进一步切分现有 ref 树时调用。 | references/refenences-Diversion.md |
+| [[merge-skill-专项]]    | 用户说"合并 skill"时 | references/merge-skill-专项.md |
 | [[场景E-合并审计]]    | 用户要求"扫描/探索现有 skill"时（只出报告不直接改） | references/场景E-合并审计.md   |

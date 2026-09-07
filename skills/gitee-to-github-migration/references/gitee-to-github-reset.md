@@ -1,6 +1,6 @@
 ---
-name: gitee-to-github-reset
-description: 开发者重置远程仓库指向 GitHub（管理员已创建仓库）
+name: gitee-to-github-reset-reference
+description: Reference — 开发者重置远程仓库指向 GitHub（管理员已创建仓库）原始版本
 type: reference
 ---
 
