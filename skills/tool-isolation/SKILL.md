@@ -1,22 +1,7 @@
-***
-
+---
 name: tool-isolation
-
-description: |
-
-当用户提到 "安装工具"、"装 esbuild"、"装 eslint"、"npm install"、
-
-"用 python 脚本"、"跑个外部工具"、"临时脚本"、"scratch 工具"、
-
-"工具隔离"、"防止污染根目录"、"HTTP 测试"、"接口调试"、"curl 测试" 时触发。
-
-本 skill 强制所有外部工具、npm 包、Python 脚本创建到 .tool/{tool-name}/ 下，
-
-与项目代码完全隔离。**遇到问题优先用 Python /npm 脚本解决**（尤其是 HTTP 指令测试）。
-
-
-
-***
+description: 外部工具隔离规范。当用户提到「安装工具」「装 esbuild」「装 eslint」「npm install」「用 python 脚本」「跑个外部工具」「临时脚本」「scratch 工具」「工具隔离」「防止污染根目录」「HTTP 测试」「接口调试」「curl 测试」时触发。强制所有外部工具、npm 包、Python 脚本创建到 .tool/{tool-name}/ 下，与项目代码完全隔离；遇到问题优先用 Python / npm 脚本解决（尤其是 HTTP 指令测试）。
+---
 
 # tool-isolation — 外部工具隔离规范
 

@@ -1,3 +1,8 @@
+---
+name: merge-skill-专项
+description: 合并多个 skill 为统一文档的 4 阶段执行手册（阅读真实代码/建主文档/归档原 skill/收尾验证）。当用户明确说"合并 skill / 把多个 skill 合成一个"时，经主 SKILL.md 流程判断确需合并后读取。
+---
+
 # Merge-Skill 专项参考（合并/归档场景）
 
 > 本文档来自原 `merge-skill/SKILL.md`，作为 key_board_3 在「**合并多个 skill**」这种**特殊优化场景**下的专项参考。
