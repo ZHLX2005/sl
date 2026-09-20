@@ -20,7 +20,6 @@
       "id": "mp4xqfwb",
       "name": "meta",
       "skills": [
-        "git-repo-cleanup",
         "repo-gitlink",
         "index-repos",
         "project-index-reader",

@@ -1,8 +1,11 @@
 ---
-name: git-repo-cleanup
-description: 清理git嵌套仓库，保持仓库隔离性，让 git add . 干净无污染。适用于 .claude/repo/ 或其他包含克隆仓库的目录。 当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、 "部分跟踪"、"白名单子目录"、"忽略但保留子目录"、"gitignore 否定规则"、"忽略 .tool/"、"工具目录不入库"时触发。
+name: gitignore-控制
+description: Reference — sl-git-standard 的 .gitignore 场景完整 SOP：隔离/白名单/部分跟踪/工具目录四模式、check-ignore 验证命令、高频错误表、排查表、验证清单。
 ---
-# git-repo-cleanup 工作流程
+
+# .gitignore 控制 — 隔离 / 白名单 / 部分跟踪 / 工具目录
+
+> 主 SKILL.md 的「标准声明结构」是唯一默认写法；本文档是写规则**之后**的完整执行细节（检查现状、解链、验证、排查）。
 
 ## 问题背景
 
@@ -13,36 +16,10 @@ description: 清理git嵌套仓库，保持仓库隔离性，让 git add . 干�
 
 导致 `git status` 不干净，`git add .` 会污染暂存区。
 
-常见需求有两个层次：
+常见需求两个层次：
 
 - **完全忽略**：整个目录不跟踪
-- **部分跟踪**：忽略目录下的克隆仓库，但跟踪一个"阅读笔记"子目录（如 `.claude/repo/_read/`）
-
-## 标准声明结构（默认，整块写入）
-
-**这是唯一默认写法。任何模式下都写入下面整块规则，一行不删：**
-
-```gitignore
-# Cloned repositories (nested git repos)
-# 父目录必须用 /* 半透明模式，否则否定规则失效
-.claude/repo/*
-!.claude/repo/_read/
-!.claude/repo/_read/**
-
-!.claude/repo/_self/
-!.claude/repo/_self/**
-
-# Tool artifacts / scratch tools (本地工具产物，不入库)
-.tool/
-```
-
-**三条硬规则**：
-
-1. **整块写入，即使 `_read/`、`_self/`、`.tool/` 目前不存在。** 规则是前瞻性的——现在写入，目录以后创建时笔记自动入库、工具产物自动被忽略。不存在≠不写。
-2. 白名单目录还不存在时，整块结构的行为与"完全忽略"完全一致（克隆仓库照样被忽略），零副作用。
-3. 禁止用裸 `.claude/repo/` 或 `.claude/repo` 代替本结构（原因见高频错误案例表第 1、2 行）。
-
----
+- **部分跟踪**：忽略目录下的克隆仓库，但跟踪"阅读笔记"子目录（如 `_read/`、`_self/`）
 
 ## 模式 A：默认处理（写入标准结构）
 
@@ -60,7 +37,7 @@ git status
 
 ### 2. 添加到 .gitignore
 
-写入上面的**标准声明结构整块**（`repo/*` + `_read`/`_self` 白名单 + `.tool/`）。
+写入主文档的**标准声明结构整块**（`repo/*` + `_read`/`_self` 白名单 + `.claude/www/` + `.tool/`）。
 
 > ⚠️ 不要因为 `_read/`、`_self/`、`.tool/` 不存在就退化为裸 `.claude/repo/`——白名单为空时行为相同，但目录将来创建时标准结构自动生效，裸写法要返工。
 
@@ -87,13 +64,13 @@ git status
 
 # 提交更改
 git add .gitignore
-git commit -m "chore: ignore .claude/repo/ cloned repos, whitelist _read/_self, ignore .tool/"
+git commit -m "chore: ignore .claude/repo/ cloned repos, whitelist _read/_self, ignore www/.tool/"
 ```
 
 **完成标准**：
 
 - `git status` 显示 `nothing to commit, working tree clean`
-- `git add .` 不会暂存 `.claude/repo/` 下的任何文件
+- `git add .` 不会暂存 `.claude/repo/` 下的任何克隆仓库文件
 
 ---
 
@@ -210,34 +187,38 @@ git commit -m "chore: ignore .tool/ for local tool artifacts"
 
 ## ⚠️ 高频错误案例
 
-| 错误写法                                        | 实际后果                                                         | 正确做法                                              |
-| ----------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `.claude/repo` + `!.claude/repo/_read`      | 父目录被整体排除，否定规则**完全失效**，`_read` 仍被忽略 | 父级必须用`.claude/repo/*`（带 `*`）              |
-| `.claude/repo/` + `!.claude/repo/_read/`    | 同上，`/` 结尾仍然排除父目录本身                               | 用`.claude/repo/*`                                  |
-| 只有`!.claude/repo/_read/` 一行否定           | 只能恢复目录本身，目录里的文件仍被忽略                           | 必须再加`!.claude/repo/_read/**`                    |
-| `repo/` 宽泛规则 + `.claude/repo/*`         | `repo/` 也会匹配 `.claude/repo` 作为目录                     | 删掉冗余的`repo/`，或改成 `repo/*` 并配合否定规则 |
-| 否定规则写在忽略规则**之前**              | 后面的忽略规则仍生效，否定不触发                                 | 否定规则必须放在忽略规则**之后**                |
-| 把`.tool/` 写成 `tool/`（少一个点）         | 可能误匹配其他非工具目录（如`toolchain/`、`tools/`）         | 必须带前导点`.tool/`，且 gitignore 区分大小写       |
-| `.tool/` 规则加入后 `git status` 仍显示改动 | 之前已跟踪的文件没从索引移除                                     | 执行`git rm --cached -r .tool/` 后再提交            |
+| 错误写法 | 实际后果 | 正确做法 |
+| --- | --- | --- |
+| `.claude/repo` + `!.claude/repo/_read` | 父目录被整体排除，否定规则**完全失效**，`_read` 仍被忽略 | 父级必须用 `.claude/repo/*`（带 `*`） |
+| `.claude/repo/` + `!.claude/repo/_read/` | 同上，`/` 结尾仍然排除父目录本身 | 用 `.claude/repo/*` |
+| 只有 `!.claude/repo/_read/` 一行否定 | 只能恢复目录本身，目录里的文件仍被忽略 | 必须再加 `!.claude/repo/_read/**` |
+| `repo/` 宽泛规则 + `.claude/repo/*` | `repo/` 也会匹配 `.claude/repo` 作为目录 | 删掉冗余的 `repo/`，或改成 `repo/*` 并配合否定规则 |
+| 否定规则写在忽略规则**之前** | 后面的忽略规则仍生效，否定不触发 | 否定规则必须放在忽略规则**之后** |
+| 把 `.tool/` 写成 `tool/`（少一个点） | 可能误匹配其他非工具目录（如 `toolchain/`、`tools/`） | 必须带前导点 `.tool/`，且 gitignore 区分大小写 |
+| `.tool/` 规则加入后 `git status` 仍显示改动 | 之前已跟踪的文件没从索引移除 | 执行 `git rm --cached -r .tool/` 后再提交 |
 | "`_read/`、`_self/`、`.tool/` 还不存在，等存在了再加规则" | 目录创建时笔记不会自动入库、工具产物直接污染仓库，还得返工改 .gitignore | **不存在≠不写。** 标准结构整块写入，规则前瞻生效，空目录零副作用 |
+| 遗漏 `.claude/www/` 规则 | 跑完提取脚本后 `git status` 出现 `?? .claude/www/` | 标准结构已内置 `.claude/www/`；旧项目升级时补上（jv 实测踩过：规则缺失直到首次跑脚本才暴露） |
 
 ### 根因速记
 
 > **Git 的硬规则**：如果父目录被排除，否定规则 `!` 无法在它下面重新包含任何东西。
 > 父目录必须"半透明"——自身不被忽略，但内部内容被忽略。这就是 `dir/*` 模式的本质。
 
+> **验证纪律**：`git status` 是唯一真相。`git check-ignore -v` 对**磁盘上不存在的路径**可能给出空 pattern 的假阳性命中（jv 实测：`.claude/www/` 不存在时误报命中，目录创建后 `git status` 立即暴露未忽略）——目录尚不存在时 check-ignore 结果不可单独采信，最终以真实文件落盘后的 `git status` 复核。
+
 ---
 
 ## 常见问题排查
 
-| 现象                                                                    | 原因                           | 解决                                              |
-| ----------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------- |
-| `_read` 下的文件不出现在 `git status`                               | 父目录被整体排除               | 把`.claude/repo` 改成 `.claude/repo/*`        |
-| `git check-ignore` 显示 `!.claude/repo/_read/**` 命中但文件仍不显示 | 父目录被排除，子文件无法浮上来 | 同上                                              |
-| `git add .claude/repo/_read` 报错 `pathspec did not match`          | 父目录不存在或被规则屏蔽       | 检查`git check-ignore -v .claude/repo` 应无输出 |
-| 部分子目录被跟踪了                                                      | 否定规则位置错误或缺`**`     | 重新检查三行顺序与内容                            |
-| `git status` 看到 `modified content`                                | 嵌套仓库有改动                 | 已在 .gitignore 中，提交 .gitignore 即可          |
+| 现象 | 原因 | 解决 |
+| --- | --- | --- |
+| `_read` 下的文件不出现在 `git status` | 父目录被整体排除 | 把 `.claude/repo` 改成 `.claude/repo/*` |
+| `git check-ignore` 显示 `!.claude/repo/_read/**` 命中但文件仍不显示 | 父目录被排除，子文件无法浮上来 | 同上 |
+| `git add .claude/repo/_read` 报错 `pathspec did not match` | 父目录不存在或被规则屏蔽 | 检查 `git check-ignore -v .claude/repo` 应无输出 |
+| 部分子目录被跟踪了 | 否定规则位置错误或缺 `**` | 重新检查三行顺序与内容 |
+| `git status` 看到 `modified content` | 嵌套仓库有改动 | 已在 .gitignore 中，提交 .gitignore 即可 |
 | `check-ignore .claude/repo/_read` 显示命中**忽略**规则而非否定规则 | 路径在磁盘上不存在，git 按文件解析，目录型否定 `!..._read/` 不匹配 | 用尾斜杠强制目录语义：`git check-ignore -v .claude/repo/_read/` |
+| check-ignore 空命中但 `git status` 仍显示 `??` | 目录尚未落盘时的 check-ignore 假阳性 | 目录真实创建后用 `git status` 复核；`git add -A --dry-run` 也可佐证 |
 
 ---
 
@@ -247,7 +228,7 @@ git commit -m "chore: ignore .tool/ for local tool artifacts"
 
 **结构正确性**：
 
-- [ ] `.gitignore` 中写入了**标准声明结构整块**（`repo/*` + `_read`/`_self` 白名单 + `.tool/`），未因目录不存在而省略
+- [ ] `.gitignore` 中写入了**标准声明结构整块**（`repo/*` + `_read`/`_self` 白名单 + `.claude/www/` + `.tool/`），未因目录不存在而省略
 - [ ] `git check-ignore -v .claude/repo` 无输出（父目录半透明，否定规则才能生效）
 
 **白名单生效**：
@@ -258,10 +239,11 @@ git commit -m "chore: ignore .tool/ for local tool artifacts"
 
 **忽略生效**：
 
-- [ ] `git check-ignore -v .claude/repo/agentscope`（任一克隆目录）命中忽略规则
+- [ ] `git check-ignore -v .claude/repo/<任一克隆目录>` 命中忽略规则
+- [ ] `git check-ignore -v .claude/www/` 命中忽略规则（目录落盘后用 `git status` 复核）
 - [ ] `git check-ignore -v .tool/` 命中忽略规则
-- [ ] `git status` 看不到克隆仓库与 `.tool/` 下的内容
-- [ ] `git add .` 不会暂存任何克隆仓库内容
+- [ ] `git status` 看不到克隆仓库、`.claude/www/`、`.tool/` 下的内容
+- [ ] `git add .` 不会暂存任何克隆仓库 / www 产物 / 工具产物
 
 **解链（仅此前被跟踪过时）**：
 
