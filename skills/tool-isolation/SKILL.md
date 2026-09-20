@@ -421,7 +421,7 @@ dist/
 | `uv` | Python 环境与依赖全权交给 `uv`（`uv venv` / `uv run` / `uv pip install`），替代旧式 `pip` + `venv` |
 | `git-repo-cleanup` 模式 C | 确保 `.tool/` 在 `.gitignore` 中 |
 | `boot-work-flow` | 工作流 skill 的"启动命令"章节可引用 `.tool/{name}/` 路径 |
-| `key_board_3` | 拆分本 skill 时，把 HTTP 测试 / npm 工具 / Python 工具各自沉淀为 reference |
+| `key_board` | 拆分本 skill 时，把 HTTP 测试 / npm 工具 / Python 工具各自沉淀为 reference（走 `references/沉淀为ref.md`） |
 | `k6-isolated-load-test` | HTTP 性能测试优先用 k6-isolated-load-test（已封装 k6 + .tool/k6） |
 | `lottery-workflow` (ref) | 「多套风格并行 subagent + 文件投票」工作流；产物落到 `.tool/<test-name>/design/`，与 .tool 隔离规范一致 |
 | `e2e-closed-loop-controller` (ref) | 前后端端到端闭环控制器：启后端 → health 检查 → 客户端黑盒测试 → 合并时间戳日志；agent 重跑控制器即可闭环 |
