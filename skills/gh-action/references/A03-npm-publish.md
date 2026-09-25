@@ -1,4 +1,4 @@
-# npm 发布工作流（GitHub Actions 标准模式）
+# A03-npm-publish — npm 发布工作流（GitHub Actions 标准模式）
 
 本 skill 把"GitHub Actions 自动发布 npm 包"沉淀成可复用模板。一次配置，长期生效。
 

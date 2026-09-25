@@ -1,4 +1,4 @@
-# android-signing-ci — CI 里的 Android release 签名（修 SHA 指纹漂移）
+# A04-android-signing-ci — CI 里的 Android release 签名（修 SHA 指纹漂移）
 
 CI 每次构建出来的 APK **签名指纹都不一样**，用户装新版必须先卸载旧版（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）。
 
@@ -11,7 +11,7 @@ CI 每次构建出来的 APK **签名指纹都不一样**，用户装新版必�
 - CI 产物是 Android APK/AAB，需要**稳定签名**（覆盖安装、Play 上架、第三方 SDK 白名单校验 SHA）
 - 用户反馈"每次更新都要卸载重装"、`INSTALL_FAILED_UPDATE_INCOMPATIBLE`
 - `deploy.yml` 里已有 keystore 步骤但签名没生效
-- 配合 [[references/deploy-template]] 或 [[references/deploy-template-no-registry]] 使用（它们负责服务端部署，本 ref 只负责 APK 签名段）
+- 配合 [[references/A01-deploy-template]] 或 [[references/A02-deploy-template-no-registry]] 使用（它们负责服务端部署，本 ref 只负责 APK 签名段）
 
 ---
 
@@ -272,6 +272,6 @@ $ANDROID_HOME/build-tools/<ver>/apksigner verify --print-certs app-release.apk
 
 ## 关联引用
 
-- [[references/deploy-template]] — GHCR 派部署模板，APK 段接本 ref
-- [[references/deploy-template-no-registry]] — 自包含部署模板，同上
-- [[references/gh-troubleshoot]] — 构建失败时抓 raw log / 诊断 run
+- [[references/A01-deploy-template]] — GHCR 派部署模板，APK 段接本 ref
+- [[references/A02-deploy-template-no-registry]] — 自包含部署模板，同上
+- [[references/B01-gh-troubleshoot]] — 构建失败时抓 raw log / 诊断 run

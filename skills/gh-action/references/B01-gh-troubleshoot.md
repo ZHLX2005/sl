@@ -1,4 +1,4 @@
-# gh-troubleshoot — CI/CD 失败时用 gh CLI 自动诊断
+# B01-gh-troubleshoot — CI/CD 失败时用 gh CLI 自动诊断
 
 CI 跑红后,从这里开始。所有命令默认在仓库根目录执行,已 `gh auth login`。
 
@@ -114,7 +114,7 @@ docker compose -f docker-compose.prod.yml logs --tail 100 -f
 
 **症状**:deploy 绿,`docker compose ps` 显示容器 image 还是老 commit,bundle hash 不变。
 **根因**:`docker compose up -d` 默认**不重新拉**已存在 image,即使 `.env` 里 TAG 改了或 `:latest` 在 GHCR 上指向新 SHA,本地缓存的 image digest 也不会更新。
-**修法**(deploy-template 已包含):
+**修法**(A01-deploy-template 已包含):
 - `up -d` 之前显式 `docker compose pull` 强制拉新 digest
 - `--force-recreate` 强制按新 image 重建容器
 - 慢网络场景:把 `pull` 包在 `timeout 720` (12 min) 内,失败 fall back 到本地缓存
@@ -151,7 +151,7 @@ gh workflow run deploy.yml --repo <owner>/<repo> -f key=value
 | `err: cannot perform an interactive login from a non TTY` | `docker login` 不可用,改用预写 config.json |
 | `##[warning]Skip output '... ' since it may contain secret` | output 名含 `AUTH`/`TOKEN` 关键词被 secret-scanner 拦,改名 + 用 artifact |
 | `Pulling images (authenticated)...` 后 hang 15min timeout | 服务器到 GHCR 慢,加 `compose pull` + `timeout 720` + SSH `command_timeout: 30m` |
-| 容器 image 是老 commit(workflow green 但没换) | `docker compose up -d` 不 re-pull,deploy-template 需 `compose pull` + `--force-recreate`(详见坑 5) |
+| 容器 image 是老 commit(workflow green 但没换) | `docker compose up -d` 不 re-pull,A01-deploy-template 需 `compose pull` + `--force-recreate`(详见坑 5) |
 | web 200 但 api 502 | 容器没起,`docker compose logs` 看 pyBigWig 编译错 |
 | `docker compose pull` 401 | PAT 失效或权限不够,regenerate fine-grained PAT with `Packages: Read` |
 | `Warning: Identity file ... not accessible` | PowerShell `$env:USERPROFILE` 没展开,改绝对路径 |
@@ -192,4 +192,4 @@ ssh -i ~/.ssh/<deploy_key> <user>@<HOST> \
 ## 相关引用
 
 - 主页面索引:[[../SKILL]]
-- deploy.yml 模板:[[deploy-template]]
+- deploy.yml 模板:[[A01-deploy-template]]

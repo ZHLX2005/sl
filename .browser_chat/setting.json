@@ -11,9 +11,8 @@
         "gitcli-todo",
         "gitee-to-github-migration",
         "gitee-to-github-reset",
-        "gh-ci-monitor",
-        "git-commit-clone",
-        "gh-ci-remote-debug"
+        "gh-ci",
+        "git-commit-clone"
       ]
     },
     {
@@ -29,7 +28,6 @@
         "mmx-research-gitclone",
         "find-skills",
         "key_board_3",
-        "codebase-optimizer",
         "tool-isolation"
       ]
     },

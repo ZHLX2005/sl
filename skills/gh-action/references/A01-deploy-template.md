@@ -1,4 +1,4 @@
-# deploy-template — battle-tested deploy.yml
+# A01-deploy-template — battle-tested deploy.yml
 
 GitHub Actions deploy workflow 模板(Docker 构建 + GHCR 推送 + SSH 部署)。**直接复制能用**,把 `<owner>/<repo>` 改成自己的仓库名即可,镜像名建议与仓库同名(`<owner>/<repo>-api`、`<owner>/<repo>-web`)。
 
@@ -315,4 +315,4 @@ err: error: cannot perform an interactive login from a non TTY device
 ## 相关引用
 
 - 主页面索引:[[../SKILL]]
-- 排障命令:[[gh-troubleshoot]]
+- 排障命令:[[B01-gh-troubleshoot]]

@@ -1,14 +1,14 @@
 ---
-name: gh-ci-remote-debug
-description: Use when CI/CD deployment fails and local debugging isn't possible, container crashes on startup, or when logs from GitHub Actions environment are needed to diagnose issues.
+name: remote-debug
+description: 在 GitHub Actions 环境中远程复现与诊断 CI 失败的 SOP（创建 debug workflow / 触发监控 / 获取日志）。主 SKILL.md 路由到本 ref 时使用。触发场景：本地无法复现、容器启动崩溃、需要 Actions 环境完整日志。
 ---
 
-# GitHub Actions + gh CLI 远程 Debug 模式
+# remote-debug — 远程调试 SOP
 
-## Overview
-在 GitHub Actions 环境中复现和诊断 CI/CD 问题，使用 gh CLI 触发和监控 workflow，Monitor 工具追踪状态变化。
+> 来自原 `gh-ci-remote-debug`。在 GitHub Actions 环境中复现和诊断 CI/CD 问题：用 gh CLI 触发 debug workflow，Monitor 追踪状态变化，拉取环境日志。
 
 ## When to Use
+
 - CI/CD 部署失败需要诊断
 - 容器启动崩溃但本地无法复现
 - 需要 GitHub Actions 环境中的完整日志
@@ -65,7 +65,7 @@ Monitor: gh run view <run_id>
 
 ### 3. Monitor 正确用法
 
-**绝对规则：Monitor 完成后必须验证状态**
+**绝对规则：Monitor 完成后必须验证状态**（主文档铁律 1）
 
 ```
 Monitor 返回 completed
@@ -108,7 +108,7 @@ Monitor completed → gh run view <run_id> 验证状态 → 获取日志
 
 ## Key Principles
 
-- **Monitor/Loop 是用户特权**：不能主动取消
+- **Monitor/Loop 是用户特权**：不能主动取消（主文档铁律 2）
 - **验证优于假设**：workflow 状态以 gh run view 为准
 - **永远不要假设** Monitor 返回 = 任务完成
 

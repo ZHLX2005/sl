@@ -1,10 +1,10 @@
-# flutter-web-docker-deploy — Flutter Web → nginx 镜像 → 服务器全自动部署
+# A05-flutter-web-docker-deploy — Flutter Web → nginx 镜像 → 服务器全自动部署
 
 Flutter 应用的 web 版全自动部署：`flutter build web` → nginx:alpine 镜像 → `docker save` → SCP → 服务器 `docker run`。**含 gh CLI 一条龙设密钥 + 端到端自测验证全流程**。
 
-与 ref4 `deploy-template-no-registry` 的关系：**部署链路完全相同**（save → scp → load → run，不依赖 registry）。差异在三点：
+与 A02 `A02-deploy-template-no-registry` 的关系：**部署链路完全相同**（save → scp → load → run，不依赖 registry）。差异在三点：
 
-| 维度 | ref4（通用） | 本 ref（Flutter Web 特化） |
+| 维度 | A02（通用） | 本 ref（Flutter Web 特化） |
 |---|---|---|
 | 构建源 | 直接 `docker build` | CI 先 `flutter build web`，产物拷进 context |
 | 镜像内容 | 应用运行时 | 纯静态文件 + nginx |
@@ -19,7 +19,7 @@ Flutter 应用的 web 版全自动部署：`flutter build web` → nginx:alpine 
 | 配置文件位置 | `web_deploy/` 单目录（不放仓库根） | 放根（Docker 默认习惯） |
 | Docker context | `web_deploy/` | 仓库根 `.` |
 | 触发条件 | `workflow_dispatch` + push master 且 message 含 `web` | paths 过滤 |
-| secrets | `HOST` `USERNAME` `SSH_KEY` `PORT`（4 个，与 ref4 一致） | — |
+| secrets | `HOST` `USERNAME` `SSH_KEY` `PORT`（4 个，与 A02 一致） | — |
 | 端口映射 | 服务器 82 → 容器 80 | — |
 
 ---
@@ -42,7 +42,7 @@ CI 流程:
 
 配套动作：`.gitignore` 追加 `web_deploy/build-web/`（CI 中间产物不入版本控制）。
 
-`.dockerignore` 放 `web_deploy/` 内即可生效（context 就是 `web_deploy/`）——这是本模式对 ref4 的一个改善：`.dockerignore` 也不用污染仓库根。
+`.dockerignore` 放 `web_deploy/` 内即可生效（context 就是 `web_deploy/`）——这是本模式对 A02 的一个改善：`.dockerignore` 也不用污染仓库根。
 
 ---
 

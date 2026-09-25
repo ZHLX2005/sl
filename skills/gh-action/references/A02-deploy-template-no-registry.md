@@ -1,12 +1,12 @@
-# deploy-template-no-registry — 自包含部署模板
+# A02-deploy-template-no-registry — 自包含部署模板
 
 `deploy.yml` 的**自包含派**：本地构建 → `docker save` → SCP 传到服务器 → `docker load` → `docker run`。**全程不依赖 GHCR 或任何 registry**。
 
 适用场景：服务器到 GHCR 网络慢/不通、镜像体积大、只需要单服务部署、registry 凭据不想管理。
 
-**与 `deploy-template`（GHCR 派）的取舍**：
+**与 `A01-deploy-template`（GHCR 派）的取舍**：
 
-| 维度 | GHCR 派 (`deploy-template`) | 自包含派（本 ref） |
+| 维度 | GHCR 派 (`A01-deploy-template`) | 自包含派（本 ref） |
 |---|---|---|
 | 镜像分发 | push 到 GHCR → pull | `docker save` → SCP → `docker load` |
 | 多服务编排 | `docker compose` | 单服务 `docker run` |
@@ -218,7 +218,7 @@ on:
 ### 坑 1：`docker save` 体积过大，CI runner 磁盘爆
 **症状**：workflow 在 build 后失败，`no space left on device`。
 **解法**：
-- 用多阶段 build 减小镜像（参考 `deploy-template.md` 的 Dockerfile 关键点）
+- 用多阶段 build 减小镜像（参考 `A01-deploy-template.md` 的 Dockerfile 关键点）
 - `docker save` 后 `gzip` 是必须的（裸 save 通常比 gzip 大 2-3 倍）
 - runner 默认 14 GB 空间，>1 GB 镜像建议提前估算
 
@@ -268,7 +268,7 @@ docker image prune -f || true
 - 镜像 < 500 MB（GHA runner 14 GB 空间足够）
 - 服务器磁盘足够（每次部署留一份新 image）
 
-**选 GHCR 派（`deploy-template`）如果**：
+**选 GHCR 派（`A01-deploy-template`）如果**：
 - 多服务（api + web + worker）
 - 服务器到 GHCR 速度快（>= 5 MB/s）
 - 镜像经常复用 layer（pull 比 save 更省带宽）
