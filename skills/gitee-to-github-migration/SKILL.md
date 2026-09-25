@@ -1,6 +1,6 @@
 ---
 name: gitee-to-github-migration
-description: 将项目从 Gitee 迁移到 GitHub 的完整指南，包含错误案例和最佳实践
+description: 将项目从 Gitee 迁移到 GitHub 的完整指南，或管理员已创建 GitHub 仓库时仅重置本地远程指向 GitHub；包含错误案例和最佳实践
 type: reference
 ---
 
@@ -96,6 +96,40 @@ git remote -v
 
 git status
 # 应显示: Your branch is up to date with 'origin/main'.
+```
+
+## 场景 B：管理员已建仓库 → 仅重置远程
+
+> 适用：仓库已由管理员在 GitHub 创建，开发者只需把本地远程重置为 GitHub 并拉取，无需 `gh repo create`。
+
+### 一条命令
+
+```bash
+git remote remove origin 2>/dev/null; git remote remove orgin 2>/dev/null; git remote add origin git@github.com:<username>/<repo-name>.git && git remote -v && git pull origin main --rebase
+```
+
+### 分步操作
+
+```bash
+# 1. 删除旧远程（忽略不存在的错误）
+git remote remove origin 2>/dev/null
+git remote remove orgin 2>/dev/null
+
+# 2. 添加 GitHub 远程
+git remote add origin git@github.com:<username>/<repo-name>.git
+
+# 3. 验证
+git remote -v
+
+# 4. 拉取代码
+git pull origin main --rebase
+```
+
+### 预期输出
+
+```
+origin	git@github.com:<username>/<repo-name>.git (fetch)
+origin	git@github.com:<username>/<repo-name>.git (push)
 ```
 
 ## 错误案例

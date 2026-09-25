@@ -53,6 +53,6 @@ description: Flutter 项目中"样式"相关工程的渐进式披露指南。当
 
 ## 协作 skill
 
-- 与 `key_board_2` 协作：每个方案文件的"实现思路"小节就是用 `key_board_2` 元模板风格写的
+- 与 `key_board` 协作：每个方案文件的"实现思路"小节就是用 `key_board` 的 `references/创建新skill.md` 元模板风格写的
 - 与 `subagent-driven-development` 协作：本 skill 不替它执行实现，只提供"该方案对应的 Flutter widget API 与已知坑"的知识
 - 与 `flutter-work-flow` 协作：本 skill 给出方案；flutter-work-flow 给出 build / lint / format 等工程流

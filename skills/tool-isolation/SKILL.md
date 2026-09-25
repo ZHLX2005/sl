@@ -1,11 +1,6 @@
 ---
 name: tool-isolation
-description: |
-  当用户提到"安装工具"、"装 esbuild"、"装 eslint"、"npm install"、
-  "用 python 脚本"、"跑个外部工具"、"临时脚本"、"scratch 工具"、
-  "工具隔离"、"防止污染根目录"、"HTTP 测试"、"接口调试"、"curl 测试"时触发。
-  本 skill 强制所有外部工具、npm 包、Python 脚本创建到 .tool/{tool-name}/ 下，
-  与项目代码完全隔离。**遇到问题优先用 Python / npm 脚本解决**（尤其是 HTTP 指令测试）。
+description: 当用户提到"安装工具"、"装 esbuild"、"装 eslint"、"npm install"、"用 python 脚本"、"跑个外部工具"、"临时脚本"、"scratch 工具"、"工具隔离"、"防止污染根目录"、"HTTP 测试"、"接口调试"、"curl 测试"时触发。本 skill 强制所有外部工具、npm 包、Python 脚本创建到 .tool/{tool-name}/ 下，与项目代码完全隔离。**遇到问题优先用 Python / npm 脚本解决**（尤其是 HTTP 指令测试）。
 ---
 
 # tool-isolation — 外部工具隔离规范
@@ -426,9 +421,10 @@ dist/
 | `uv` | Python 环境与依赖全权交给 `uv`（`uv venv` / `uv run` / `uv pip install`），替代旧式 `pip` + `venv` |
 | `git-repo-cleanup` 模式 C | 确保 `.tool/` 在 `.gitignore` 中 |
 | `boot-work-flow` | 工作流 skill 的"启动命令"章节可引用 `.tool/{name}/` 路径 |
-| `key_board_3` | 拆分本 skill 时，把 HTTP 测试 / npm 工具 / Python 工具各自沉淀为 reference |
+| `key_board` | 拆分本 skill 时，把 HTTP 测试 / npm 工具 / Python 工具各自沉淀为 reference（走 `references/沉淀为ref.md`） |
 | `k6-isolated-load-test` | HTTP 性能测试优先用 k6-isolated-load-test（已封装 k6 + .tool/k6） |
 | `lottery-workflow` (ref) | 「多套风格并行 subagent + 文件投票」工作流；产物落到 `.tool/<test-name>/design/`，与 .tool 隔离规范一致 |
+| `e2e-closed-loop-controller` (ref) | 前后端端到端闭环控制器：启后端 → health 检查 → 客户端黑盒测试 → 合并时间戳日志；agent 重跑控制器即可闭环 |
 | `flood-fill-image-script` (ref) | 图像处理专项脚本（洪涌法去白底 + 连通域岛屿提取）；脚本与 pillow/numpy/scipy 依赖隔离到 `.tool/image-extractor/`，避免污染项目 `requirements.txt` |
 
 ## 快速决策树
@@ -459,6 +455,9 @@ dist/
   ├─ 是直接调项目二进制？
   │    └─ ⚠️ 先想能否用 Python / npm 脚本替代；不能替代时才启服务
   │
+  ├─ 是前后端端到端闭环（启后端 + 跑客户端黑盒测试）？
+  │    └─ → .tool/e2e-loop/scripts/controller.py，详见 [[e2e-closed-loop-controller]]
+  │
   └─ 是「多套风格并行生成让用户挑」的工作流（lottery）？
        └─ → .tool/<test-name>/design/ + 并行 subagent，详见 [[lottery-workflow]]
 ```
@@ -471,3 +470,4 @@ dist/
 | --- | --- | --- |
 | [[flood-fill-image-script]] | 图像去白底 / 抠图 / 色块岛屿提取 / connected component 分离 | references/flood-fill-image-script.md |
 | [[lottery-workflow]] | 多套风格并行 subagent + 文件投票（自迭代版） | references/lottery-workflow.md |
+| [[e2e-closed-loop-controller]] | 端到端闭环：启后端 + health 检查 + 客户端黑盒测试 + 合并时间戳日志 | references/e2e-closed-loop-controller.md |

@@ -24,7 +24,7 @@ skill-creator  /writing-skills
 
 同级meta-skill :
 
-key_board_2/key_board_3
+key_board
 
 ## 触发条件
 

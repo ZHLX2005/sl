@@ -299,10 +299,9 @@ release-please 会自动根据 Conventional Commits 生成 PR、改版本号、�
 
 - **git-workflow** —— 提交规范、版本号语义化（semver）、Conventional Commits
 - **skill-development** —— 本 skill 自身的元模板参考
-- **key_board_2** —— 创建 skill 时的元流程
+- **key_board** —— 创建 skill 时的元流程（加载 `references/创建新skill.md`）
 
 ## 版本
 
 - 1.0.0（2026-06-21）—— 从 `jc` 项目实战总结，模板来自 nx-sx
-- 1.1.0（2026-07-30）—— 迁入 `gh-action` 作为 `npm-publish` ref（key_board_3 场景 C）
-- 1.2.0（2026-09-22）—— 模板文件名 `npm-publish.yml` → `fuck-npm.yml`（信仰命名：npm 发布太折磨，后续所有 npm 自动发布工作流沿用此名）
+- 1.1.0（2026-07-30）—— 迁入 `gh-action` 作为 `npm-publish` ref（key_board 的「沉淀为 ref」动作）

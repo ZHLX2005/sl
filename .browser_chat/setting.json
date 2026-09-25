@@ -20,7 +20,6 @@
       "id": "mp4xqfwb",
       "name": "meta",
       "skills": [
-        "git-repo-cleanup",
         "repo-gitlink",
         "index-repos",
         "project-index-reader",
@@ -31,8 +30,7 @@
         "find-skills",
         "key_board_3",
         "codebase-optimizer",
-        "tool-isolation",
-        "boot-work-flow"
+        "tool-isolation"
       ]
     },
     {
