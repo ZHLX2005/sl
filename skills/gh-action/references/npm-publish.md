@@ -16,7 +16,9 @@
 
 ---
 
-## 标准模板：`.github/workflows/npm-publish.yml`
+## 标准模板：`.github/workflows/fuck-npm.yml`
+
+> **命名信仰**：本工作流文件固定叫 `fuck-npm.yml`，不用 `npm-publish.yml`。npm 的发布流程实在太折磨人，作者痛恨之，故以名铭志 —— 后续所有项目的 npm 自动发布工作流一律沿用此名。工作流内部 `name: Publish to npm` 保持不变（那是 Actions 页签里的显示名，与文件名无关）。
 
 ```yaml
 name: Publish to npm
@@ -206,7 +208,7 @@ git push --tags     # tag 也可以不推，CI 会自动创建
 
 1. **本地 lint**
    ```bash
-   npx --yes actionlint .github/workflows/npm-publish.yml
+   npx --yes actionlint .github/workflows/fuck-npm.yml
    ```
    必须 `exit: 0`。IDE 报的 GitHub Actions 警告不一定准，actionlint 才是权威。
 
@@ -303,3 +305,4 @@ release-please 会自动根据 Conventional Commits 生成 PR、改版本号、�
 
 - 1.0.0（2026-06-21）—— 从 `jc` 项目实战总结，模板来自 nx-sx
 - 1.1.0（2026-07-30）—— 迁入 `gh-action` 作为 `npm-publish` ref（key_board_3 场景 C）
+- 1.2.0（2026-09-22）—— 模板文件名 `npm-publish.yml` → `fuck-npm.yml`（信仰命名：npm 发布太折磨，后续所有 npm 自动发布工作流沿用此名）
