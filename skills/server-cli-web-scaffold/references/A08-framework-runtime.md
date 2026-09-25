@@ -1,4 +1,4 @@
-# 08 · 框架底座与开发体验（dev 模式 / 端口 / spawn 坑）
+# A08 · 框架底座与开发体验（dev 模式 / 端口 / spawn 坑）
 
 > 归属主文档 [[server-cli-web-scaffold]] 的「框架底座与开发体验」路由。本文件是**已经跑起来**
 > 的 server-cli-web 项目**日常怎么跑、怎么排错**的完整规范——读它当你要 dev、CI、
@@ -13,14 +13,14 @@
 - 在 **Windows + Git Bash** / Node 18+ 上调试诡异问题 → 看这里
 - 加新的 `scripts/*` 工具脚本 → 先看这里的「spawn 坑」
 
-不适用：从零建项目（走主文档的「创建流程」阶段 1–6 + [[01-bootstrap-serve-first]]）。
+不适用：从零建项目（走主文档的「创建流程」阶段 1–6 + [[A01-bootstrap-serve-first]]）。
 
 ## 二、dev 模式为什么是**两个进程**，不是一条命令
 
 | 进程 | 端口 | 启动方式 | 职责 |
 |---|---|---|---|
 | **Vite** dev server | 5180 | `pnpm run dev`（自动） | JSX 实时转译、HMR、浏览器侧模块服务、`/api/*` 代理 |
-| **serve** 后端 | 7800 | `pnpm run dev`（自动） | 静态文件 + `/api/*` HTTP 接口、PowerShell、文件持久化 |
+| **serve** 后端 | 78xx | `pnpm run dev`（自动） | 静态文件 + `/api/*` HTTP 接口、PowerShell、文件持久化 |
 
 **为什么不能合并**：本骨架的核心不变量是「**prod 入口纯净**」——发布产物里**没有**构建工具。
 `serve` 服务 `src/web/public/`（构建产物），不知道也不关心 JSX/TSX。
@@ -40,7 +40,7 @@ pnpm run dev
   └─ scripts/dev.mjs
       ├─ 起 vite（5180，--host 127.0.0.1）
       ├─ 等 vite ready（GET / 不再 ECONNREFUSED）
-      ├─ 起 serve（7800，bin/cli.mjs serve --no-open）
+      ├─ 起 serve（78xx，bin/cli.mjs serve --no-open）
       └─ 一个 ctrl-c：SIGTERM → vite + serve 一起退
 ```
 

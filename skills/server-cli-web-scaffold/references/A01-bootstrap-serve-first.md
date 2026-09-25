@@ -1,4 +1,4 @@
-# 01 · 工程骨架：一切基于 serve
+# A01 · 工程骨架：一切基于 serve
 
 > 归属主文档 [[server-cli-web-scaffold]]。读它当你要**定目录结构**或**接一个新功能域**时。
 
@@ -101,7 +101,7 @@ export function startServer({ port, host = '127.0.0.1' } = {}) {
   id: 'serve',
   cli: ['serve'],
   summary: '启动 Web 面板',
-  flags: { port: { type: 'number', default: 7800 }, 'no-open': { type: 'boolean' } },
+  flags: { port: { type: 'number', default: 78xx }, 'no-open': { type: 'boolean' } },
   run: async (ctx) => { /* 起服务 + 打印地址 + SIGINT 优雅退出 */ },
 }
 ```
@@ -135,14 +135,14 @@ export default defineConfig({
   build: { outDir: '../public', emptyOutDir: true },
   server: {
     port: 5180,
-    proxy: { '/api': { target: 'http://127.0.0.1:7800', bypass: (req) => shouldServeLocally(req.url) } },
+    proxy: { '/api': { target: 'http://127.0.0.1:78xx', bypass: (req) => shouldServeLocally(req.url) } },
   },
 });
 ```
 
 | 模式 | 起什么 | 静态文件从哪来 |
 | --- | --- | --- |
-| dev | `vite`（:5180）+ `<name> serve --no-open`（:7800） | Vite dev server，`/api` 代理到 7800 |
+| dev | `vite`（:5180）+ `<name> serve --no-open`（:78xx） | Vite dev server，`/api` 代理到 78xx |
 | prod | `<name> serve` | `src/web/public/`（`vite build` 产物，gitignore） |
 
 **server.js 对构建工具零感知**——它只服务 `public/` 目录，不管是 dev 还是 prod。
@@ -210,9 +210,9 @@ curl -s -o /dev/null -w "%{http_code} %{content_type}\n" http://localhost:5180/a
 
 | 文件 | 职责 | 关键点 |
 | --- | --- | --- |
-| `paths.js` | 常量、存储路径、安全校验 | 存储路径要能用**环境变量覆盖**（见 [[05-state-storage]]） |
-| `store.js` | 状态读写 | 原子写 + 缓存失效（见 [[05-state-storage]]） |
-| `errors.js` | AppError + code 映射 | 映射只写一处（见 [[00-design-and-verify]]） |
+| `paths.js` | 常量、存储路径、安全校验 | 存储路径要能用**环境变量覆盖**（见 [[A05-state-storage]]） |
+| `store.js` | 状态读写 | 原子写 + 缓存失效（见 [[A05-state-storage]]） |
+| `errors.js` | AppError + code 映射 | 映射只写一处（见 [[A00-design-and-verify]]） |
 
 再往下按项目需要加：`open.js`（开浏览器/文件管理器）、
 以及本项目的纯算法文件（差分、解析、计算…）——**纯函数放 core，方便单测**。

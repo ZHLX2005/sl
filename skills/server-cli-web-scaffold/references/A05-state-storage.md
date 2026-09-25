@@ -1,4 +1,4 @@
-# 05 · 状态存储
+# A05 · 状态存储
 
 > 归属主文档 [[server-cli-web-scaffold]]。读它当你要**定存储位置**或**接持久化**时。
 
@@ -33,7 +33,7 @@ export function storePathFromEnv() {
 启动横幅里把生效路径打出来，用户才知道数据在哪：
 
 ```
-面板:   http://127.0.0.1:7800
+面板:   http://127.0.0.1:78xx
 存储:   ~/.nx-rh/store.json
 ```
 

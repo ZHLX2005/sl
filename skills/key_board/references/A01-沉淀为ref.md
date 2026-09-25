@@ -1,6 +1,6 @@
 ---
 name: 沉淀为ref
-description: 拆 ref 的唯一权威流程。当用户说"把 xx 沉淀为 reference / 拆出去 / 单独存一下"，或说"skill 太大了 / 膨胀了"（批量模式），或主动要求对现有 ref 树再切一层（进阶）时读取。主 SKILL.md 路由到本 ref 时使用。
+description: 拆 ref 的唯一权威流程。当用户说"把 xx 沉淀为 reference / 拆出去 / 单独存一下"，或说"skill 太大了 / 膨胀了"（批量模式），或主动要求对现有 ref 树再切一层（进阶）时读取。主 SKILL.md 路由到本 ref 时使用。ref 数量超 5 后的序列化编号走 [[A03-ref路由优化]]。
 ---
 
 # 沉淀为 ref — 拆解与分层
@@ -13,7 +13,7 @@ description: 拆 ref 的唯一权威流程。当用户说"把 xx 沉淀为 refer
 
 | 动作 | 触发信号 | 加载 ref |
 |---|---|---|
-| **创建新 skill**（从 0 到 1） | "总结成 skill" / 无现有 ref 可扩展时 | [[创建新skill]] |
+| **创建新 skill**（从 0 到 1） | "总结成 skill" / 无现有 ref 可扩展时 | [[C01-创建新skill]] |
 | **沉淀为 ref**（拆老楼） | "沉淀为 reference / 拆出去 / 单独存" | 本 ref |
 
 > **一句话总结**：创建新 skill 是从 0 起楼，沉淀为 ref 是给老楼加 ref。两者走不同 ref，但都是 key_board 的子动作。

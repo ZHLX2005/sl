@@ -1,8 +1,8 @@
-# 04 · Skill 创建的前期架构考虑
+# A04 · Skill 创建的前期架构考虑
 
 > 归属主文档 [[server-cli-web-scaffold]]。**写代码前先写 skill；写完 skill 再写代码。**
 >
-> 这一节插在 `[[01-bootstrap-serve-first]]`（定骨架）之后、`[[05-state-storage]]`（接状态）之前——因为它要回答的是"你这个项目到底要被谁调用、怎么被调用"，决定所有后续 action 的形态。
+> 这一节插在 `[[A01-bootstrap-serve-first]]`（定骨架）之后、`[[A05-state-storage]]`（接状态）之前——因为它要回答的是"你这个项目到底要被谁调用、怎么被调用"，决定所有后续 action 的形态。
 
 ## 一句话原则
 
@@ -69,7 +69,7 @@
 
 ## 与 key_board 的协作
 
-如果你这个项目本身是个"工具生成器"或"skill 分发器"，那么创建这个项目**前**应先用 [[key_board]] 走 `references/创建新skill.md` 的 SOP；创建这个项目**时**再按本 ref 的最小骨架落地 skill。这样 skill 既符合 key_board 的元规范，又符合本骨架的工程契约。
+如果你这个项目本身是个"工具生成器"或"skill 分发器"，那么创建这个项目**前**应先用 [[key_board]] 走 `references/C01-创建新skill.md` 的 SOP；创建这个项目**时**再按本 ref 的最小骨架落地 skill。这样 skill 既符合 key_board 的元规范，又符合本骨架的工程契约。
 
 ## 错误案例
 

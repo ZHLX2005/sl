@@ -297,7 +297,7 @@ release-please 会自动根据 Conventional Commits 生成 PR、改版本号、�
 
 - **git-workflow** —— 提交规范、版本号语义化（semver）、Conventional Commits
 - **skill-development** —— 本 skill 自身的元模板参考
-- **key_board** —— 创建 skill 时的元流程（加载 `references/创建新skill.md`）
+- **key_board** —— 创建 skill 时的元流程（加载 `references/C01-创建新skill.md`）
 
 ## 版本
 

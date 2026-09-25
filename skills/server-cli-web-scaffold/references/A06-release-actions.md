@@ -1,4 +1,4 @@
-# 06 · 发版：GitHub Actions + gh secret
+# A06 · 发版：GitHub Actions + gh secret
 
 > 归属主文档 [[server-cli-web-scaffold]]。读它当你要**配发布流水线**时。
 >
