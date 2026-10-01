@@ -8,7 +8,7 @@
 ~/.<主题名>/store.json
 ```
 
-用户目录下一级，以**项目主题名**命名（`~/.nx-rh/`、`~/.k6-report/`…）。
+用户目录下一级，以**项目主题名**命名（`~/.xxx/`、`~/.k6-report/`…）。
 不要用 `~/.config/<name>/` 这种多层路径——本机工具的用户不会去翻它，
 而"就在 home 下、一眼能找到、能手动改"反而是优点（出问题时可手工修复）。
 
@@ -34,7 +34,7 @@ export function storePathFromEnv() {
 
 ```
 面板:   http://127.0.0.1:78xx
-存储:   ~/.nx-rh/store.json
+存储:   ~/.xxx/store.json
 ```
 
 ## 二、单一 JSON 文件 vs 分片

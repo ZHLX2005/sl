@@ -52,7 +52,7 @@ gh repo create <包名> --public --source=. --remote=origin --push
 `gh repo edit <owner>/<name> --visibility public --accept-visibility-change-consequences`，
 比新建敏感得多，**必须先问**。
 
-拿到 `nameWithOwner`（如 `On-DevPlan/nx-rh`）写进 `package.json`：
+拿到 `nameWithOwner`（如 `<owner>/xxx`）写进 `package.json`：
 
 ```json
 {

@@ -1,6 +1,6 @@
 ---
-name: 创建新skill
-description: 从 0 创建新 skill 的完整 SOP（声明两层依赖 / sc:reflect / Capture Intent / 写 SKILL.md / 错误案例）。当主 SKILL.md 路由优先级确认无相关主题可扩展现有 ref 时，才加载本 ref——本 ref 是 skill 创建的唯一动作，不是默认入口。底层依赖 skill-creator / writing-skills。
+name: Z01-创建新skill
+description: key_board 内置动作 SOP——从 0 创建新 skill（来源：对话/反思），含两层依赖声明 / sc:reflect / Capture Intent / 写 SKILL.md / 错误案例。**本 ref 仅在 key_board 主 SKILL.md 路由优先级确认无现有 ref 可扩展时才加载**——创建不是默认入口，路由优先级永远先扩展目标 skill 现有 ref。底层依赖 skill-creator / writing-skills。本 ref 是 key_board 的 SOP，不是要新建的 skill。
 ---
 
 # 创建新 skill
@@ -9,7 +9,7 @@ description: 从 0 创建新 skill 的完整 SOP（声明两层依赖 / sc:refle
 >
 > 本 ref 是 key_board 内置的"从 0 创建 skill"动作——2 步校验（两层依赖声明）+ 5 步流程的完整 SOP。**创建不是默认入口**：路由优先级永远先尝试扩展现有 ref，无相关主题才加载本 ref。
 >
-> **与 [[C02-代码库创建skill]] 的分工**：本 ref 处理「对话/反思来源」的创建（用户说"总结成 skill / 保存对话为 skill"）；创建来源是**真实代码库**（"为这个项目创建规范 skill / 分析这个目录"）时走 [[C02-代码库创建skill]]。两者共用本 ref 的两层依赖声明规范。
+> **与 [[Z02-代码库创建skill]] 的分工**：本 ref 处理「对话/反思来源」的创建（用户说"总结成 skill / 保存对话为 skill"）；创建来源是**真实代码库**（"为这个项目创建规范 skill / 分析这个目录"）时走 [[Z02-代码库创建skill]]。两者共用本 ref 的两层依赖声明规范。
 
 ## 依赖 skill 声明与校验
 

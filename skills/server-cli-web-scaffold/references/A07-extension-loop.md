@@ -98,6 +98,15 @@ assert.deepEqual(problems, [], '文档里的这些命令解析不到');
 
 > 这条新命令，agent 会在什么场景下需要它？如果有答案，它就必须出现在 agent 手册里。
 
+**同时守住边界**：`assets/<skill>/` 是**随包发到用户机器上**的手册，只写「这个工具**怎么用**」。
+开发规范（本文件的闭环落点表、`src/` 内部分层、lint 与测试闸门怎么验证、「不该改什么」这类纪律）
+属于**项目仓库**的知识——本地项目写 `README.md`，可复用骨架写创建它的那个脚手架 skill。
+判定口径与正反例见 [[A04-assert-skill]] 的「assets 与项目文档的分工」。
+
+> 实测反例：yyy 的 `references/40-extend.md` 整篇是「加栏目模板 / 加功能域要碰哪 12 处」，
+> 用户装完包，agent 永远不会执行「改这个项目本身」，却要为它付上下文；而项目仓库这边
+> 反倒没有这份文档。**写进 assets 的不是「重要的东西」，是「用户侧 agent 用得上的东西」。**
+
 ## 四、让「漏了」变成红灯
 
 闭环表里带断言的那几项，是**用机制替代记忆**的地方，值得先确认它们真的会在项目上触发：
@@ -129,7 +138,7 @@ src/index.js                     + export * as env
 eslint.config.js                 + '../env/*' 进互依禁列
 tests/unit/envvars.test.mjs      纯逻辑断言（CI 能跑）
 tests/smoke.mjs                  + 只读与 dry-run 断言
-assets/repo-hub/references/env-manage.md   + 路由表一行 + 主文档场景一行
+assets/<skill>/references/env-manage.md   + 路由表一行 + 主文档场景一行（**只写「怎么用」，不写「怎么改」**）
 README.md / CHANGELOG.md         命令总表与变更记录
 ```
 
@@ -138,6 +147,7 @@ README.md / CHANGELOG.md         命令总表与变更记录
 | 做法 | 后果 |
 | --- | --- |
 | 「先加命令，文档回头补」 | 回头是永远。agent 侧这条命令等于不存在，而没有任何测试会提醒 |
+| 把「怎么改这个项目」也写进 `assets/<skill>/` | 用户侧 agent 要的是「怎么用」，改项目的规范对它是永远读不到、也读不动的一段；写的人却以为「已经文档化了」，项目仓库那边反倒没有这份东西 |
 | 新模块只登记了 `runtime/registry.js`，忘了前端 `VIEWS` | 后端报「模块有 view 但前端没登记」，一致性测试在 CI 上红——这次是**会红**的，属于幸运的一类 |
 | 新模块忘了进互依禁列 | 静默。半年后没人说得清哪些模块允许互相依赖 |
 | 读命令的 flag 照抄写命令的 `default` | 命令不报错、返回半个结果。调用方以为「全部」拿到的是「一部分」 |
@@ -154,6 +164,7 @@ README.md / CHANGELOG.md         命令总表与变更记录
       且写前自动留可回滚的快照
 - [ ] 纯逻辑已下沉成不依赖平台的函数，并有 `tests/unit/` 断言（这样 CI 上跑得起来）
 - [ ] 冒烟测试覆盖了新命令的**只读路径**；破坏性路径用 `--dry-run` 覆盖，**绝不真写**
-- [ ] `assets/<skill>/` 的 agent 手册已加新场景，并在其路由表登记「何时读取」
+- [ ] `assets/<skill>/` 的 agent 手册已加新场景，并在其路由表登记「何时读取」；
+      **且这一条只写「怎么用」**——「怎么改这个项目」留在项目仓库的 `README.md`（见 [[A04-assert-skill]]）
 - [ ] `README.md` 命令总表已补，`CHANGELOG.md` 已记
 - [ ] 全链通过：`pnpm test`（lint + build + 冒烟 + 单测），而不是只跑 build

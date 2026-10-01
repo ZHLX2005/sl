@@ -178,7 +178,7 @@ input:focus, select:focus {
 **凡是「刷新后不该丢」的用户选择，一律走 localStorage。**
 
 ```js
-const LS_KEY = 'nx-rh-ui';
+const LS_KEY = 'xxx-ui';
 
 // 只持久化「选择」，不持久化「数据」——数据永远从 /api 拉，避免陈旧缓存
 const DEFAULT_UI = {
@@ -455,7 +455,7 @@ AI 生成的设计最容易冒出**通用模板味**，这里列五条**最常�
 | 坑 | 后果 | 正确做法 |
 | --- | --- | --- |
 | `.cli-hint` 之类的提示手写 | 与真实命令脱节，误导用户 | 从 bootstrap 下发的命令表渲染 |
-| CLI 提示里命令之间无分隔 | `nx-rh env statusnx-rh env list…` 粘成一坨，不可读 | 命令之间用 `<span> · </span>` 分隔；文案写成通顺句子 |
+| CLI 提示里命令之间无分隔 | `xxx env statusxxx env list…` 粘成一坨，不可读 | 命令之间用 `<span> · </span>` 分隔；文案写成通顺句子 |
 | map 里用无 key 的 Fragment | React key 警告 | `<Fragment key={c.id}>` |
 | flex 子项没写 `min-width: 0` | 长路径把布局撑出屏幕 | 所有 flex 子项加 `min-width: 0` |
 | `querySelector` 读弹窗输入框 | 有同名元素时读错 | 用 ref |
