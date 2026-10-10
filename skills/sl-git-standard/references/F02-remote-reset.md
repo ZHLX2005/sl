@@ -1,10 +1,9 @@
 ---
-name: gitee-to-github-reset-reference
-description: Reference — 开发者重置远程仓库指向 GitHub（管理员已创建仓库）原始版本
-type: reference
+name: F02-remote-reset
+description: 开发者重置远程仓库指向 GitHub（管理员已创建仓库）。触发场景："管理员已建好仓库"、"重置远程"、"直接 add origin"。archived-from: gitee-to-github-reset（已并入 sl-git-standard）。
 ---
 
-# 重置远程到 GitHub
+# F02 — 重置远程到 GitHub
 
 > 管理员已创建仓库，开发者只需重置本地远程。
 
@@ -37,3 +36,8 @@ git pull origin main --rebase
 origin	git@github.com:ZHLX2005/br_ct.git (fetch)
 origin	git@github.com:ZHLX2005/br_ct.git (push)
 ```
+
+## F01 vs F02 何时用
+
+- **F01**（完整迁移）：自己迁移，gh repo create 一步到位
+- **F02**（远程重置）：管理员已建好仓库，只切远程 + pull

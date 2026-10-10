@@ -76,7 +76,7 @@ Format: 每行一个 URL：git@ / https:// / http:// / file://
 | 8 | `--prune` 删清单外目录；本地路径资产不动 | check 预览 → prune → `git status` 干净 |
 | 9 | 宿主自身 origin 永不入清单、永不被克隆 | check 的 `Host repo (excluded)` 行 |
 | 10 | conflict 阻塞且 exit 2，不覆盖磁盘 | 同名不同源 fixture |
-| 11 | git status 不被产物污染 | `.claude/www/` 已被标准结构忽略（见 [[gitignore-控制]]） |
+| 11 | git status 不被产物污染 | `.claude/www/` 已被标准结构忽略（见 [[A01-gitignore-控制]]） |
 
 ## Common Mistakes
 
