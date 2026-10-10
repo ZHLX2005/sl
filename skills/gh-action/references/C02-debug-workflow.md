@@ -1,18 +1,10 @@
----
-name: remote-debug
-description: 在 GitHub Actions 环境中远程复现与诊断 CI 失败的 SOP（创建 debug workflow / 触发监控 / 获取日志）。主 SKILL.md 路由到本 ref 时使用。触发场景：本地无法复现、容器启动崩溃、需要 Actions 环境完整日志。
----
+# C02-debug-workflow — Actions 环境远程复现诊断（debug workflow 模板）
 
-# remote-debug — 远程调试 SOP
+> 来自原 `gh-ci` skill（其前身为 `gh-ci-remote-debug`）。在 GitHub Actions 环境中复现和诊断 CI/CD 问题：用 gh CLI 触发 debug workflow，Monitor 追踪状态变化，拉取环境日志。
 
-> 来自原 `gh-ci-remote-debug`。在 GitHub Actions 环境中复现和诊断 CI/CD 问题：用 gh CLI 触发 debug workflow，Monitor 追踪状态变化，拉取环境日志。
+## 何时读取
 
-## When to Use
-
-- CI/CD 部署失败需要诊断
-- 容器启动崩溃但本地无法复现
-- 需要 GitHub Actions 环境中的完整日志
-- 用户说"debug"、"监控 CI"、"查看日志"、"为什么失败"
+本地无法复现、容器启动崩溃、需要 Actions 环境完整日志时加载本 ref。用户说"debug CI / 容器在 CI 里起不来 / 要 Actions 环境的日志"。常规排障命令（不建 debug workflow）走 [[B01-gh-troubleshoot]]；Monitor 用法与三铁律见 [[C01-monitor-build]]（监控链上一段）。
 
 ## Core Pattern
 
@@ -65,7 +57,7 @@ Monitor: gh run view <run_id>
 
 ### 3. Monitor 正确用法
 
-**绝对规则：Monitor 完成后必须验证状态**（主文档铁律 1）
+**绝对规则：Monitor 完成后必须验证状态**（三铁律见 [[C01-monitor-build]]）
 
 ```
 Monitor 返回 completed
@@ -108,7 +100,7 @@ Monitor completed → gh run view <run_id> 验证状态 → 获取日志
 
 ## Key Principles
 
-- **Monitor/Loop 是用户特权**：不能主动取消（主文档铁律 2）
+- **Monitor/Loop 是用户特权**：不能主动取消（铁律 2，见 [[C01-monitor-build]]）
 - **验证优于假设**：workflow 状态以 gh run view 为准
 - **永远不要假设** Monitor 返回 = 任务完成
 
@@ -139,3 +131,9 @@ Monitor 正在追踪状态 → 主动调用 TaskStop 取消 → 丢失监控能�
 - 等待 Monitor 自然结束或状态变化通知
 - 如果需要停止，让用户明确知道这是他们的特权
 - 永远不要主动取消 Monitor/Loop 工具
+
+## 相关引用
+
+- 主页面索引:[[../SKILL]]
+- 监控 SOP 与三铁律（监控链上一段）:[[C01-monitor-build]]
+- 排障命令全集:[[B01-gh-troubleshoot]]

@@ -11,7 +11,7 @@
         "gitcli-todo",
         "gitee-to-github-migration",
         "gitee-to-github-reset",
-        "gh-ci",
+        "gh-action",
         "git-commit-clone"
       ]
     },
@@ -35,8 +35,7 @@
       "id": "mr5w7qx8",
       "name": "高级语言",
       "skills": [
-        "uv",
-        "npm-work-flow"
+        "uv"
       ]
     },
     {

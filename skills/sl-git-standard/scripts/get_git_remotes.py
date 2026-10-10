@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # get_git_remotes.py — keep the git.remote manifest and .claude/repo/ in sync.
 #
 # One script, three subcommands (extract is the classic mode; check/sync add
@@ -28,9 +29,17 @@
 #
 # NOTE: intentionally NO shebang. On Windows the py launcher resolves
 # "#!/usr/bin/env python3" to the WindowsApps python3 stub, which exits
-# silently with code 49. Always invoke via an explicit interpreter:
-#   py  get_git_remotes.py          (Windows)
-#   python3 get_git_remotes.py      (Linux/Mac)
+# silently with code 49. Python 3 only (f-strings throughout) — Python 2
+# cannot even parse this file. Every interpreter name is a potential trap,
+# so callers MUST preflight before invoking:
+#   <interp> -c "import sys; assert sys.version_info >= (3, 8)"
+# then use the first candidate that passes, in this order:
+#   py -3                (Windows, py launcher on PATH)
+#   python3              (Linux/Mac; on Windows only if the WindowsApps
+#                         alias is a real Store Python, not the stub)
+#   uv run python        (fallback when no local python works)
+#   python               (bare — ONLY if the preflight passed; conda/venv
+#                         shims may resolve to Python 2)
 #
 # Cross-platform (Windows/Linux/Mac), replaces the former get-git-remotes.ps1/.sh pair.
 

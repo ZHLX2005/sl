@@ -1,15 +1,12 @@
----
-name: gh-upstream-release
-description: |
-  Fork 模式下，把当前分支领先 upstream/master 的多个 commit 压缩成一个，
-  推送到 `upstream` 远端，再 `gh pr create` + `--squash` 合并到主分支的端到端 SOP。
-  触发场景：用户说"压缩领先 commit 再发版"、"squash 后推到 upstream 然后 PR"、
-  "用 gh 推到 upstream master"、"把当前分支发版"、"open PR against upstream"、
-  明确给出 squash + push + gh pr create 序列时。
-  适用前提：本地有 `origin`（自己的 fork）和 `upstream`（canonical 仓库）两个 remote；
-  当前分支相对 `upstream/master` 已有 N 个领先 commit（N ≥ 1）。
----
-# gh-upstream-release
+# B04-upstream-release — Fork squash 发版 upstream PR SOP
+
+> 来自原 `gh-upstream-release` skill。Fork 模式下，把当前分支领先 upstream/master 的多个 commit 压缩成一个，推送到 `upstream` 远端，再 `gh pr create` + `--squash` 合并到主分支的端到端 SOP。
+
+## 何时读取
+
+用户说"压缩领先 commit 再发版 / squash 后推到 upstream 然后 PR / 用 gh 推到 upstream master / 把当前分支发版 / open PR against upstream"，或明确给出 squash + push + gh pr create 序列时加载本 ref。gh 认证/登录问题 → [[B02-gh-setup]]。
+
+**适用前提**：本地有 `origin`（自己的 fork）和 `upstream`（canonical 仓库）两个 remote；当前分支相对 `upstream/master` 已有 N 个领先 commit（N ≥ 1）。
 
 把"压缩领先 commit → force push → gh pr create → squash merge"打包成可重复执行的 SOP。
 
@@ -248,3 +245,9 @@ gh pr view <num> --repo "$UPSTREAM" \
 
 > **查领先数 → soft reset squash → push --force-with-lease → gh pr create → gh pr merge --squash --delete-branch → pr view 总结**
 > force 必带 with-lease，base 自动探测，squash 不再问用户。
+
+## 相关引用
+
+- 主页面索引:[[../SKILL]]
+- gh 登录/token/secret 配置:[[B02-gh-setup]]
+- 合并后 CI 回归排查:[[B01-gh-troubleshoot]]

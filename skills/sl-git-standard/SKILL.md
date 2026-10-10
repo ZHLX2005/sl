@@ -1,6 +1,6 @@
 ---
 name: sl-git-standard
-description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓库的 .gitignore 控制（隔离/白名单/部分跟踪）+ git.remote 清单与 .claude/repo 克隆的一致性维护（check / extract / sync，跨平台 Python 脚本）+ 提交快照（commit 浅克隆存档到 .claude/repo/project/，跨平台 Python）+ Gitee → GitHub 跨平台迁移与远程重置。当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、"部分跟踪"、"白名单子目录"、"忽略 .tool/"、"提取 remote"、"git.remote"、"check 一致性"、"sync 参考仓库"、"prune 旧仓库"、"为这个 commit 创建快照"、"快照当前项目状态"、"管理快照保留数量"、"从 Gitee 迁移到 GitHub"、"切远程到 GitHub"、"管理员已建好仓库"、"重置远程"时触发。也用于创建新项目时的 git 标准初始化。
+description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓库的 .gitignore 控制（隔离/白名单/部分跟踪）+ git.remote 清单与 .claude/repo 克隆的一致性维护（check / extract / sync，跨平台 Python 脚本）+ 提交快照（commit 浅克隆存档到 .claude/repo/project/，跨平台 Python）+ Gitee → GitHub 跨平台迁移与远程重置。当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、"部分跟踪"、"白名单子目录"、"忽略 .tool/"、"提取 remote"、"git.remote"、"check 一致性"、"sync 参考仓库"、"prune 旧仓库"、"同步检查补充"、"巡检参考仓库"、"把本地仓库提交进 git.remote"、"为这个 commit 创建快照"、"快照当前项目状态"、"管理快照保留数量"、"从 Gitee 迁移到 GitHub"、"切远程到 GitHub"、"管理员已建好仓库"、"重置远程"时触发。也用于创建新项目时的 git 标准初始化。
 ---
 # sl-git-standard — Git 仓库心智扁平化标准
 
@@ -25,7 +25,12 @@ description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓�
 3. **真实代码是唯一真相。** `scripts/get_git_remotes.py` 是提取与一致性能力的唯一实现（跨平台单文件）；文档描述与脚本行为冲突时，以脚本为准并回改文档。
 4. **清单与磁盘同源同滤。** `git.remote` 清单与磁盘克隆使用同一个 URL 谓词（git@/https/http/file://）；裸本地路径 origin 的克隆是机器本地资产，不入清单、不被 prune。宿主项目自身的 origin 永不入清单——sync 永不把宿主克隆进自己的 `.claude/repo/`。
 5. **先 check 后 sync。** check 是只读 diff 预览（exit 0 一致 / 1 漂移 / 2 错误），sync 是收敛动作；删除性操作（`--prune`）必须先看 check 预览。
-6. **提取产物必须被忽略。** `.claude/www/` 是脚本运行产物，不属宿主仓库内容——标准结构已内置忽略，禁止把 `git.remote` 提交进宿主仓库。
+6. **清单是仓库内容，随宿主提交。** `.claude/www/git.remote` 入库——清单随仓库走，换机器/同事 clone 后 `sync` 才有输入；标准结构**不写**任何忽略 `.claude/www/` 的规则（2026-10 用户修正：原标准忽略 www，已反转）。
+7. **缺失即问，回填即做。** `extract` 回填清单是幂等安全动作，巡检时默认执行（把本地 repo 提交进 `www/git.remote`）；clone / `--prune` / `--update` 改变磁盘状态——清单里的仓库磁盘缺失时**必须先问用户是否 clone**，不得静默拉取。
+
+## 主动调用默认 SOP（同步 / 检查 / 补充）
+
+被主动调用做仓库例行维护时（"同步检查补充"、"巡检参考仓库"、"把本地 repo 提交进 git.remote"），B 序列按固定顺序跑：**解释器预检 → check → extract 回填 → missing 先问再 clone**。哪步直接做、哪步必须问用户，详见 [[B01-repo-gitlink-提取]] 的「主动调用默认 SOP」表。纪律一句话：**回填即做并提交清单，缺失即问，prune 必问。**
 
 ## 标准声明结构（.gitignore 默认整块）
 
@@ -39,8 +44,8 @@ description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓�
 !.claude/repo/_self/
 !.claude/repo/_self/**
 
-# git remote 提取脚本的运行产物（sl-git-standard）
-.claude/www/
+# .claude/www/git.remote 清单是仓库内容，随宿主提交（sl-git-standard）——
+# 故意不写忽略规则：清单随仓库走，换机器/同事 clone 后 sync 才有输入
 
 # Tool artifacts / scratch tools (本地工具产物，不入库)
 .tool/
@@ -57,7 +62,7 @@ description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓�
 | 序列 | 场景                                                | 信号                                                                         | 何时读取                                                              | 路径                                       |
 | ---- | --------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------ |
 | **A** | .gitignore 控制（隔离/白名单/部分跟踪/工具目录）     | "清理git"、"git add . 有污染"、"_read 要入库"、"忽略 .tool/"                 | 任何需要写或排查 .gitignore 规则时                                    | [[A01-gitignore-控制]] |
-| **B** | 提取/一致性维护（check/extract/sync）               | "提取 remote"、"git.remote"、"check 一致性"、"sync 参考仓库"、"prune 旧仓库" | 需要生成/刷新`.claude/www/git.remote`、克隆清单仓库或对齐磁盘状态时 | [[B01-repo-gitlink-提取]] |
+| **B** | 提取/一致性维护（check/extract/sync）               | "提取 remote"、"git.remote"、"check 一致性"、"sync 参考仓库"、"prune 旧仓库"、"同步检查补充"、"巡检参考仓库"、"把本地仓库提交进 git.remote" | 需要生成/刷新`.claude/www/git.remote`、克隆清单仓库或对齐磁盘状态时；主动例行巡检默认走 B | [[B01-repo-gitlink-提取]] |
 | **D** | 提交快照（commit 浅克隆存档）                        | "为这个 commit 创建快照"、"快照当前项目状态"、"管理快照保留数量"             | 需要为指定 commit 创建可浏览快照存档、对比不同 commit 之间的快照      | [[D01-commit-snapshot]] |
 | **F** | 跨平台迁移（完整迁移）                                | "从 Gitee 迁移到 GitHub"、"切远程到 GitHub"                                 | 自己迁移，`gh repo create` 一步到位                                   | [[F01-gitee-to-github-migration]] |
 | **F** | 跨平台迁移（远程重置）                                | "管理员已建好仓库"、"重置远程"、"直接 add origin"                           | 仓库已在远端建好，只切远程 + pull                                     | [[F02-remote-reset]] |
