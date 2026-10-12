@@ -196,11 +196,61 @@ return dispatch(...);
 业务代码全用 `cwdScope()` / `cwdDir()` 拿当前 scope —— 由于 `als.js` 是 `AsyncLocalStorage`，
 整个请求 async 链上**自动落到激活目录**，零侵入。
 
-### 4. hook 也按目录分文件
+### 4. 顶部「最近目录」切换器的前端 UI/UX
+
+后端（scope 头 + ALS）解决了「请求能落到激活目录」，但用户要在面板上**看得见、切得动、收得回**——
+右上角那个目录切换下拉有一套容易漏的交互。nx-rh / nx-rp 都已实现，照这套做：
+
+**结构（header 右侧）**
+
+- 只读 `<div className="meta">`：显示当前作用域路径的**末段名**（hover title 给全路径）；
+- `<details className="recents" ref={...}>`：summary 显示「最近目录 N」，下拉 `<ul>` 列出 bootstrap 的 `recents`；
+- 列表顶部放「（服务进程目录）」回退项，底部放「＋ 注册其他目录…」入口。
+
+**交互铁律（高频漏点）**
+
+| 要求 | 做法 |
+|---|---|
+| 点页面别处自动收起 | 原生 `<details>` 只在点 summary 时开合，**点开后点别处不会关**——这是要修的 bug。用下面的 `useClickOutside` 钩子收口 |
+| Esc 收起 | 同一钩子监听 `keydown` Escape |
+| 选中目录即收起 | 项的 onClick 里先关下拉再 `switchScope(...)`，别让菜单停住 |
+| 当前态可见 | activeScope 命中项加 `.active` + `✓`；再点一次 = 切回服务进程目录（`switchScope(null)`） |
+| 只显示末段 | 按钮渲染 basename，完整路径放 `title` |
+
+**可复用钩子（沉淀进 `components/ui.jsx`）**
+
+```js
+// 点击「元素外部」或按 Esc 时触发回调。用 pointerdown 而非 click：mouseup 前就触发，点别处立即收起。
+export function useClickOutside(ref, onOutside, { enabled = true } = {}) {
+  useEffect(() => {
+    if (!enabled) return;
+    const onPointer = (e) => { const el = ref.current; if (el && !el.contains(e.target)) onOutside(e); };
+    const onKey = (e) => { if (e.key === 'Escape') onOutside(e); };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey); };
+  }, [ref, onOutside, enabled]);
+}
+```
+
+接线（App 壳）：
+
+```jsx
+const recentsRef = useRef(null);
+const closeRecents = useCallback(() => { if (recentsRef.current) recentsRef.current.open = false; }, []);
+useClickOutside(recentsRef, closeRecents);
+// 项：onClick={() => { closeRecents(); switchScope(active ? null : r); }}
+<details className="recents" ref={recentsRef}>…</details>
+```
+
+> 切换器只改前端 `activeScope`；真正让后端落到该目录的是 `x-xxx-scope` 头 + ALS（见本节第 3 条）。
+> 前端组件库与 ALS 分文件存放，别让 `als.js` 被打进前端 bundle。
+
+### 5. hook 也按目录分文件
 
 `paths.js#promptsFileFor(cwd)`：把 cwd 的归一化形式做 SHA1 前 12 位 → `${hash}.jsonl` 写到 `~/.xxx/prompts/`，文件名全 ASCII，规避 cwd 里的中文/空格。
 
-### 5. 知识库按 workspace 目录命名
+### 6. 知识库按 workspace 目录命名
 
 `paths.js#workspaceKbFor(cwd, docRootSetting)` 把 cwd 用 `serializePath` 折成 `[A-Za-z0-9_-]` 串作目录名：
 
@@ -228,6 +278,7 @@ return dispatch(...);
 | 状态读写（原子写 + mtime 失效缓存） | `src/core/store.js` |
 | 模块三件套范本 | `src/modules/doc/index.js` |
 | 视图注册表（前端壳） | `src/web/frontend/registry.js` |
+| 顶部 scope 切换器 + 点击外部收口 | `src/web/frontend/App.jsx` + `components/ui.jsx`（`useClickOutside`） |
 | 模块分组排序 | 各 `index.js` 的 `order` 字段 |
 
 ## 六、A 序列对照表
@@ -248,3 +299,4 @@ return dispatch(...);
 | 跳过 A 序列直接照抄 B03 的具象设计 | 抽象层与具象层混在一起——读到「`x-xxx-scope` 头」时不知道这是 [[A05]]「按 cwd 隔离」的具象，还是某个项目的特定设计；改规范时漏改 xxx 一侧 | 把 A 序列当必读前置；B03 只当「具象形态速查」，不替代规范 |
 | 把 B03 当成「扩展清单」去挂新模块 | 新模块通过 B03 就能加到 xxx 框架里，但 **server-cli-web 本身**并没把它当成骨架能力——下次别的项目复用又要重新设计 | 落在 [[A07-extension-loop]] 的 12 处闭环表里，而不是 B03 的子章节 |
 | 把 xxx 的具体路径/文件名当成硬规范 | xxx 是参考实现；`paths.js#cwdScope` 的归一化规则、`store.json` 的 scopes 形状都是**这一类项目**的形态，但每个项目的 `APP_NAME` / `recents` 上限 / KB 目录命名规则都不同 | B03 只描述「这一类项目怎么解」；具体阈值/命名到项目仓库或 [[A05]] 决定 |
+| 顶部目录下拉用原生 `<details>` 却不处理点击外部 | 点开「最近目录」后点页面别处菜单不收起，只能再点一次 summary——典型小 bug；选中目录后菜单也常停住不关 | 用第 4 节的 `useClickOutside`（pointerdown 外部 + Esc），并在选中项 onClick 里主动收起 |
