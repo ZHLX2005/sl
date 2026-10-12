@@ -1,7 +1,7 @@
 ---
 name: mmx-research-gitclone
 description: |
-  使用mmx进行深度搜索并git clone开源项目到.claude/repo目录。
+  使用mmx进行深度搜索并git clone开源项目到.claude/repo目录，并在clone完成后直接append origin到.claude/www/git.remote清单（不调任何sl-git-standard脚本，纯shell dedup）。
   当用户想要搜索技术资料、调研开源项目、查找最佳实践时触发。
   例如："搜索Flutter liquid glass实现"、"搜索React组件库并clone"、"调研某个技术的开源方案"。
   优先使用SSH (git@)进行克隆，限制最多clone 2个最有价值的项目。
@@ -97,7 +97,67 @@ fi
 ls "$REPO_ROOT/.claude/repo/<repo-name>/"
 ```
 
-### 5. 限制
+### 5. 登记到 git.remote 清单（不调脚本，直接 append）
+
+**纪律**：本 skill **不调用** `get_git_remotes.py`（包括 extract / sync / check / preflight / discover）—— clone 落盘后直接 append URL 到 `<root>/.claude/www/git.remote` 即可。
+
+**为什么仍要登记**：不登记则 `sl-git-standard check/sync` 看不到新克隆的仓库（漂移 +clone）；换机器/同事接手后 `sync` 拉不到这些参考（清单是仓库内容，缺了等于没源）。
+
+**写入方式**（带 dedup + URL 谓词校验，谓词与 `get_git_remotes.py` 的 `URL_PREFIXES` 一致：`git@` / `https://` / `http://` / `file://`）：
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+MANIFEST="$REPO_ROOT/.claude/www/git.remote"
+mkdir -p "$(dirname "$MANIFEST")"
+touch "$MANIFEST"
+
+# 用 Step 3 实际 clone 用的那条 URL（替换为真实 URL）
+URL="git@github.com:<owner>/<repo>.git"
+
+# 1) URL 谓词校验：必须是 shareable URL（裸本地路径资产不入清单）
+case "$URL" in
+    git@*|https://*|http://*|file://*) ;;
+    *) echo "错误: '$URL' 不是 shareable URL，跳过登记"; exit 1 ;;
+esac
+
+# 2) dedup：清单已有则跳过（grep -x 整行匹配，-F 视为固定串）
+if grep -qxF "$URL" "$MANIFEST"; then
+    echo "已登记: $URL"
+else
+    printf '%s\n' "$URL" >> "$MANIFEST"
+    echo "新增登记: $URL"
+fi
+
+# 多仓库场景：把 URLS 数组按上述流程批量写
+# URLS=( "git@github.com:a/b.git" "https://github.com/c/d.git" )
+# for url in "${URLS[@]}"; do ... done
+```
+
+**踩坑提醒**：
+- ❌ 调用 `get_git_remotes.py extract` —— 本 skill 明确不调任何 sl-git-standard 脚本（用户指示）
+- ❌ 写裸本地路径（`C:/...`、`/home/...`）—— `sl-git-standard` 读取侧静默拒收，该行实际无效
+- ❌ 漏 dedup —— 重复执行会污染清单（每次执行 append 一行）
+- ❌ 漏 URL 谓词校验 —— 可能塞入 npm 短名、搜索页面 URL、SSH 别名简写
+- ❌ 不 commit 清单 —— 换机器后 `sl-git-standard sync` 无输入
+
+**前置依赖**：宿主仓库的 `.gitignore` 必须包含 sl-git-standard 的标准声明结构（`.claude/repo/*` 父目录半透明 + 白名单 `_self/`）—— 否则 `.claude/repo/<repo-name>/.git` 会污染 `git status`。此结构由 `sl-git-standard` 写入，mmx-research-gitclone 不重复声明。
+
+**跳过 Step 5 的判据**（按需，不默认）：
+- 用户明确说"只 clone 不入清单" → 跳过整张 Step 5 + Step 6
+- clone 全部失败（Step 4 全挂）→ 没产物可登记，Step 5 无 URL 可写
+
+### 6. 提交清单入宿主仓库
+
+`www/git.remote` 是仓库内容（sl-git-standard 原则 6：清单随宿主走），不是工具产物。Step 5 append 后必须 commit，否则换机器后 `sync` 无输入：
+
+```bash
+cd "$REPO_ROOT"
+git add .claude/www/git.remote
+git diff --cached --quiet .claude/www/git.remote || \
+  git commit -m "chore(git.remote): register <repo-name> after mmx-research clone"
+```
+
+### 7. 限制
 
 - **最多克隆2个**最有价值的项目
 - 优先克隆与当前任务最相关的
@@ -121,6 +181,10 @@ ls "$REPO_ROOT/.claude/repo/<repo-name>/"
    - 技术栈
 
 项目位置: .claude/repo/<project-name>/
+
+已登记到清单 .claude/www/git.remote（直接 append + dedup，未调 sl-git-standard 脚本）:
+  新增: 1, 已存在跳过: 0, Manifest 总条目: N
+清单是否已 commit: yes / no
 ```
 
 ## 常见搜索示例
@@ -160,3 +224,12 @@ mmx search query --q "iOS glassmorphism swift package github" --output json --qu
 | clone/验证全用相对路径，且 shell CWD 已 `cd` 进 `.claude/repo/pi` | 实际克隆到 `.claude/repo/pi/.claude/repo/awesome-pi-agent` 嵌套位置；验证也用相对路径执行所以"通过"，向用户报告了错误路径，用户找不到 | clone 前先 `git rev-parse --show-toplevel` 锁定 `$REPO_ROOT`，克隆和验证全用绝对路径；验证时额外检查嵌套目录 |
 | 搜索结果只给 pi.dev 页面，没核实源仓库就直接猜 owner/repo 去 clone | 两次 404（`tuanpnt/`、`dbachelder/` 均不存在），浪费重试 | clone 前用 `gh api repos/<owner>/<repo>` 确认存在；只有 npm 包名时先 `curl registry.npmjs.org/<pkg>` 反查 repository 字段，无字段 = 未开源，放弃 |
 | HTTPS 连接重置后准备放弃该项目 | 差点错过目标仓库 | SSH/HTTPS 双向回退：SSH 失败试 HTTPS，HTTPS 超时也试 SSH |
+
+### [2026-10-12] 注册 git.remote 踩坑
+
+| 错误操作 | 实际后果 | 正确做法 |
+|---------|---------|---------|
+| 调 `get_git_remotes.py extract` 走脚本回填（2026-10-12 之前的 Step 5 写法） | 引入解释器依赖（py3 / py2 / uv）+ Windows py launcher stub 退出码 49 风险；脚本调用不属于 mmx-research-gitclone 的职责（用户明确：本 skill 不调任何 sl-git-standard 脚本） | 直接 `echo/printf + grep dedup` append URL 到 `.claude/www/git.remote`；零脚本依赖 |
+| 手工 `echo "git@github.com:..." >> .claude/www/git.remote` 但漏 dedup | 重复执行会污染清单，重复行让 `sl-git-standard check` 把同一仓库算多次 | 用 `grep -qxF "$URL" "$MANIFEST"` 整行匹配判断是否已存在，再决定 append |
+| 写裸本地路径（`C:/...`、`/home/...`）到清单 | `sl-git-standard` 读取侧的 `is_shareable_url()` 静默拒收，该行实际无效，但 `cat` 看到行在容易误以为生效 | URL 入口加 `case "$URL" in git@*\|https://*\|http://*\|file://*) ... ;; *) 报错 ;; esac` 谓词校验 |
+| extract/append 之后不 commit `www/git.remote` | 清单是仓库内容（sl-git-standard 原则 6），不 commit 等于只在本机生效；换机器/同事接手 `sync` 无输入 | Step 6 `git add .claude/www/git.remote && git commit` 落清单进宿主仓库 |
