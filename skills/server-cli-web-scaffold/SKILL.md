@@ -109,7 +109,7 @@ ref 分两个序列：
 | [[A03-cli-surface]]    | 定 CLI 对外契约时：`serve` / `skill install` / `skill get` 参数、`--json` 格式、三段拼接输出                                                                                                                                                                 |
 | [[A04-assert-skill]]    | **初始化时必读**——`SKILL.md` + `references/00-思想文档.md` 的最小骨架、为什么要"先 skill 后代码"、**`assets/` 与项目文档的分工**（哪些知识该发给用户、哪些只属于仓库开发者——写错一步就会把开发手册发到用户机器上）、触发词自检 4 条、错误案例                                                                                                                              |
 | [[A05-state-storage]]    | 定存储时：放哪、怎么写不坏、怎么让测试不污染用户目录                                                                                                                                                                                                                 |
-| [[A06-release-actions]]    | 配发版流水线时：**用 gh 建仓库（默认公开）**、gh secret、npm token、tag 幂等；以及 push 之后怎么用 gh 盯住流水线                                                                                                                                               |
+| [[A06-release-actions]]    | **配发版流水线 / 首次建包发布 / 发版排错时**：npm 已限制令牌直发（`E_STAGE_REQUIRED`）——**Trusted Publishing（OIDC 零 token）为主线**：`npm trust github` 配一次信任关系，CI 全自动直发；含首次建包 bootstrap（信任关系只能配「已存在的包」→ 新包先本地 login 首发）、`gh repo create`（默认公开）、幂等 + tag、`gh run watch --exit-status` 盯流水线、staged 通道兜底与完整排错对照表 |
 | [[A07-extension-loop]]    | **每次新增/修改一个功能域时必读**——闭环落点表（12 处，逐个标注「漏了会怎样、谁会发现」）、三处**没有任何断言**的静默失效点（`src/index.js` 导出 / eslint 互依禁列 / `assets/` 文档单向漂移）、以及怎么验证闸门本身真的会触发                       |
 | [[A08-framework-runtime]]    | **dev 模式 / 日常跑项目时必读**——为什么是 vite + serve 两个进程而非一条命令、`pnpm run dev` 启动器、Node 18+ IPv6 / `--host 127.0.0.1`、跨平台 spawn 坑（npm.cmd / Git Bash / cwd 校准）                                                                 |
 | [[A09-template-generator]]    | **把项目沉淀为可重用模板时必读**——`templates/<id>/template.json` schema、`hooks.mjs` 三钩子契约（options / beforeGenerate / afterGenerate）、文本 vs 二进制分发（扩展名白名单）、防穿越（路径段 `..` / `.` / 盘符三道闸）、dry-run 与生成共用 `walkTemplate`、严格 vs 宽松双契约渲染、openFlags 开放选项、坏模板不吞也不中断、`generate.js` **永远不认识「图片」**——二进制产物由模板钩子产出 |
@@ -132,7 +132,7 @@ ref 分两个序列：
 - [ ] 非集合模块（配置 / 动作集合 / 外部连接器 / 聚合）**没有**被硬套成 CRUD，但仍满足两端可达
 - [ ] 状态存 `~/<主题名>/`，可用环境变量覆盖（否则测试会写脏用户目录）
 - [ ] 分层规则由 lint 强制，不是写在文档里的君子协定
-- [ ] GitHub Actions 能在 push 后发版；secrets 缺失时**提示用户补**而不是静默失败
+- [ ] GitHub Actions 能在 push 后发版：首选 **Trusted Publishing**（OIDC 零 token；npm 侧用 `npm trust github --file <workflow> --repo <o/r> --allow-publish` 配一次；新包先按 [[A06-release-actions]] 第一节 bootstrap 首发）；缺配置时**把 npm 侧待办直给用户**而不是静默失败
 - [ ] 远端仓库由 `gh repo create` 建好（默认公开，且**执行前已告知用户**）
 - [ ] push 之后用 `gh run watch --exit-status` 确认流水线真的成功，不留"发出去了吗"的悬念
 
@@ -162,7 +162,7 @@ ref 分两个序列：
 | 把开发规范（加功能域要碰哪几处、lint 怎么改）写进`assets/<skill>/` | 这段知识随包发到用户机器上，而用户侧 agent 手上没有`src/`，永远用不上；真正需要它的仓库开发者在项目仓库里反倒找不到   | 判据是「**用户装完包，他的 agent 何时需要它**」，不是「它重不重要」；开发规范归位到项目`README.md`／本脚手架 skill（见 [[A04-assert-skill]]）        |
 | lint 规则从没红过就当它没问题                                        | 规则写错（路径 glob 不匹配、files 没覆盖到`view.jsx`）不会报错，只会永远通过——**一个从没红过的规则等于不存在** | 加/改 lint 规则后做一次反向测试：临时写个违例文件，确认退出码非 0 |
 
-_最后更新：2026-09-26_
+_最后更新：2026-10-13_
 
 ## 操作记录（key_board_3）
 
@@ -276,3 +276,15 @@ B 序列原是"重操作 ref"（debug / shim / scope registry 等运行时动作
 - `assets/` 与 `groups.json` 的分工（与 [[A04-assert-skill]] 互补）
 - 命名一致性（package.name ≡ 主 skill ≡ 默认 group key）
 - 反模式（基于 参考实现项目 真实踩坑）
+
+### 2026-10-13 · A06 重写为 Trusted Publishing SOP（npm 令牌直发退场 + 首次建包 bootstrap）
+
+| 错误操作 | 实际后果 | 正确做法 |
+| --- | --- | --- |
+| 沿用旧 A06 的「gh secret set NPM_TOKEN + npm publish 直发」主路线 | npm 政策变更后 403 `E_STAGE_REQUIRED`（粒度令牌只能暂存发布），发布流水线直接卡死 | A06 重写：**Trusted Publishing（OIDC 零 token）为主线**——`npm trust github <包> --file <wf.yml> --repo <o/r> --allow-publish` 配一次，之后 push 即全自动发布 |
+| 把「staged 发布 + 人工批准」当终点 | 每发一版都要人点一次批准，CI 自动化名存实亡（用户明确要求「使用 GitHub Action 进行发布」） | staged 降级为兜底通道（写进排错表）；主线走 OIDC 直发 |
+| 没发现「信任关系只能配『已存在的包』」 | 新包直接 `npm trust` 报包不存在——鸡生蛋 | A06 新增「首次建包 SOP」：本地 `npm login`（交互式，agent 不代跑）→ `npm publish` 首发 → 才可配信任关系；新项目起步版号避开旧包已占版本段 |
+| CI 沿用 Node 20 | `npm@latest`（12.x）`EBADENGINE`（要求 ≥22.22.2），升级 npm 的步骤直接红 | CI 锁 Node 24；本地 `npx npm@latest` 在旧 Node 上只是警告可忽略，但 CI 里不要凑合 |
+| 发布步骤保留 `NODE_AUTH_TOKEN` + setup-node 带 `registry-url` | 令牌/残留 .npmrc 覆盖 OIDC 通道，报错仍是旧的令牌类症状，误导排查方向 | 模板写清「三个不要」；加 **OIDC 预检步骤**（环境注入 + ID token 获取），失败时一眼分清 GitHub 侧 vs npm 侧 |
+| 只把「网页配置」写进 SOP | 网页操作是 2FA 交互、agent 无法代跑，用户还得自己找入口 | SOP 以 **CLI（`npm trust`，npm ≥ 12）为首选**，网页作备选并注明「交互式，agent 不要代跑」 |
+| force push 覆盖远端后不处理 tag | 旧 tag 悬空指向被覆盖的提交（幂等判断会错乱） | 覆盖前把旧 head 存**本地** tag（`archive/*`）存档；远端旧 tag 需要时 `gh api -X DELETE .../git/refs/tags/<t>` 清理 |
