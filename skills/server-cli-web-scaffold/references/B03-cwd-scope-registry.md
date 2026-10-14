@@ -198,26 +198,60 @@ return dispatch(...);
 
 ### 4. 顶部「最近目录」切换器的前端 UI/UX
 
-后端（scope 头 + ALS）解决了「请求能落到激活目录」，但用户要在面板上**看得见、切得动、收得回**——
-右上角那个目录切换下拉有一套容易漏的交互。nx-rh / nx-rp 都已实现，照这套做：
+后端（scope 头 + ALS）解决了「请求能落到激活目录」，但用户要在面板上**看得见、切得动、收得回、删得掉**——
+右上角那个目录切换下拉有一套容易漏的交互与 CSS。老形态用原生 `<details>` 也能跑，
+成熟形态已演进成**受控下拉**，差异与踩坑都在下面。
 
 **结构（header 右侧）**
 
 - 只读 `<div className="meta">`：显示当前作用域路径的**末段名**（hover title 给全路径）；
-- `<details className="recents" ref={...}>`：summary 显示「最近目录 N」，下拉 `<ul>` 列出 bootstrap 的 `recents`；
-- 列表顶部放「（服务进程目录）」回退项，底部放「＋ 注册其他目录…」入口。
+- 受控下拉 `<div className="recents-wrap">`：触发按钮常驻 header（末段名 + 计数 + caret），`open` 为真时才挂菜单；
+- 菜单每行 = 主按钮（末段名 + 完整路径 + 激活 `✓`）+ **hover 才显形**的 `×` 删除；
+- 菜单底部 = 「＋ 添加目录」入口。
+
+**为什么用受控 `<div>` 而不是原生 `<details>`**
+
+`<details>` 的展开态是 **DOM 原生属性**，不是 React state。于是：
+
+- 「点外部收回」只能去改 `ref.current.open = false` 直写 DOM——两套真相，React 侧不知道菜单关了；
+- 行内要再放一个删除按钮时，`summary` / `ul` 的结构很别扭（`summary` 只该有一个）；
+- 一行里要放**两个动作**（切换 + 删除）时，`<details>` 的表达力明显不够。
+
+换成 `useState(open)` + `wrapRef` 后，开合只有一处真相，闭合逻辑一处收口。
+（老项目的 `<details>` 不是错，只是**加了删除按钮之后**就不够用了。）
+
+**CSS 三个可复用点**
+
+| 需求 | 做法 | 为什么 |
+|---|---|---|
+| 行内操作按钮只在 hover 时显形 | 按钮 `position: absolute; right: 6px; top: 50%; transform: translateY(-50%); opacity: 0`；父行 `:hover` 时 `opacity: 1` | 常显会让每行右侧糊成一团噪音；用**绝对定位**而不是 `visibility` 占位，避免显隐时行宽抖动 |
+| 主按钮给操作按钮留位 | 主按钮 `padding-right: 32px` | 否则长路径的文字会压到 `×` 底下，hover 时字与按钮叠在一起 |
+| 菜单悬挂、不撑开 header | 菜单 `position: absolute; right: 0; top: calc(100% + 6px)`；父 `position: relative` | header 是 `position: sticky`，菜单若进文档流会把 header 顶高、把主体整块挤下去 |
+
+两个配套的细节：
+
+- 删除按钮的**危险色只给 `:hover`**（`background: var(--bad); color: #fff`），行本身的 hover 保持 `--soft`。
+  用户一眼能看出「这一下是破坏性的」，而不是和普通行 hover 长得一样。
+- 底部「＋ 添加目录」用 `border-top` 与列表分隔 + 斜体弱化——它是**另一个语义**（新增），不是列表项。
 
 **交互铁律（高频漏点）**
 
 | 要求 | 做法 |
 |---|---|
-| 点页面别处自动收起 | 原生 `<details>` 只在点 summary 时开合，**点开后点别处不会关**——这是要修的 bug。用下面的 `useClickOutside` 钩子收口 |
-| Esc 收起 | 同一钩子监听 `keydown` Escape |
-| 选中目录即收起 | 项的 onClick 里先关下拉再 `switchScope(...)`，别让菜单停住 |
+| 点页面别处收起 | 监听 **`mousedown`**（或 `pointerdown`），不是 `click`，划 `wrapRef` 边界 |
+| 点触发按钮别「关了又开」 | 同上——`click` 阶段会**先**冒泡到触发按钮的 `onClick`（`setOpen(true)`），把刚关掉的又打开；`mousedown` 早于 `click` 触发，天然避开 |
+| Esc 收起 | 同一处 `keydown` 监听 `Escape` |
+| 选中目录即收起 | 项 `onClick` 里先 `setOpen(false)` 再 `switchScope(...)` |
+| 删除不误触切换 | `×` 的 `onClick` 里 **`e.stopPropagation()`**——否则冒泡到行内主按钮，删完还顺手把目录切走了 |
 | 当前态可见 | activeScope 命中项加 `.active` + `✓`；再点一次 = 切回服务进程目录（`switchScope(null)`） |
+| 自动跟随最新触发 | `useEffect` 依赖 `[top?.scope, activeScope?.scope]`：顶部 ≠ 激活时 `switchScope(top)`。用户点选、或**另一终端在新 cwd 起 serve** 后窗口聚焦刷新 bootstrap，两条来源都盖住 |
 | 只显示末段 | 按钮渲染 basename，完整路径放 `title` |
+| 添加目录走项目自己的弹窗 | `useDialog`（单输入框）+ `useGuard`/`useToast`。**不要用 `window.prompt`**：原生弹窗样式突兀、无法 toast 校验失败，且 `window.alert` 报错与项目其余提示不是一个视觉体系 |
 
-**可复用钩子（沉淀进 `components/ui.jsx`）**
+**可复用钩子（多下拉时抽进 `components/ui.jsx`）**
+
+只有一个下拉时，把这段 effect 内联在组件里就够（`xxx` 就是内联的）。
+一旦出现第二个下拉（更多面板入口），就该抽成钩子——否则每个组件都要重复一遍「mousedown + Esc + 边界判定」：
 
 ```js
 // 点击「元素外部」或按 Esc 时触发回调。用 pointerdown 而非 click：mouseup 前就触发，点别处立即收起。
@@ -233,18 +267,23 @@ export function useClickOutside(ref, onOutside, { enabled = true } = {}) {
 }
 ```
 
-接线（App 壳）：
+接线（App 壳，受控形态）：
 
 ```jsx
-const recentsRef = useRef(null);
-const closeRecents = useCallback(() => { if (recentsRef.current) recentsRef.current.open = false; }, []);
-useClickOutside(recentsRef, closeRecents);
-// 项：onClick={() => { closeRecents(); switchScope(active ? null : r); }}
-<details className="recents" ref={recentsRef}>…</details>
+const [open, setOpen] = useState(false);
+const wrapRef = useRef(null);
+useClickOutside(wrapRef, () => setOpen(false), { enabled: open });
+// 项：onClick={() => { setOpen(false); switchScope(active ? null : r); }}
+// 删除：onClick={(e) => { e.stopPropagation(); guard(() => removeRecent(r)); }}
+<div ref={wrapRef} className="recents-wrap">…</div>
 ```
 
 > 切换器只改前端 `activeScope`；真正让后端落到该目录的是 `x-xxx-scope` 头 + ALS（见本节第 3 条）。
 > 前端组件库与 ALS 分文件存放，别让 `als.js` 被打进前端 bundle。
+
+> **删除的失败不要吞。** 切换是乐观的（本地状态先改），失败静默还能接受；
+> 删除不同——失败后条目**看起来还在**，用户会以为没点中。让 `removeRecent` 把异常抛出来，
+> 由调用方的 `guard` toast，与项目其余失败反馈一致。
 
 ### 5. hook 也按目录分文件
 
@@ -278,7 +317,8 @@ useClickOutside(recentsRef, closeRecents);
 | 状态读写（原子写 + mtime 失效缓存） | `src/core/store.js` |
 | 模块三件套范本 | `src/modules/doc/index.js` |
 | 视图注册表（前端壳） | `src/web/frontend/registry.js` |
-| 顶部 scope 切换器 + 点击外部收口 | `src/web/frontend/App.jsx` + `components/ui.jsx`（`useClickOutside`） |
+| 顶部 scope 切换器 + 点击外部收口 | `src/web/frontend/App.jsx`（单下拉时 effect 内联；多下拉时抽 `components/ui.jsx` 的 `useClickOutside`） |
+| 面板视觉规范（单色 / 状态标签 / 立体感 / 密度双层） | `src/web/frontend/style.css`（`:root` 的 CSS 变量是唯一调色板来源） |
 | 模块分组排序 | 各 `index.js` 的 `order` 字段 |
 
 ## 六、A 序列对照表
@@ -288,6 +328,7 @@ useClickOutside(recentsRef, closeRecents);
 | 二 · 项目化启动方式 | [[A01-bootstrap-serve-first]]（dev/prod 同入口、serve 驱动） |
 | 三 · 注册分组设计模式 | [[A00-design-and-verify]] 第 3 节（ctx 契约）/ 第 7 节（CRUD 完备性 / 三端一致性） |
 | 四 · cwd 作用域 | [[A05-state-storage]]（按 cwd 隔离 + recents）/ [[A07-extension-loop]]（互依禁列） |
+| 四 · 4 切换器 UI / CSS | [[A02-web-panel]]（面板视觉规范、点击外部收口、行 28px / 按钮 32px / 字号 12px 的密度双层） |
 | 五 · 关键文件位置 | [[A01-bootstrap-serve-first]]（目录结构）+ [[A07-extension-loop]]（12 处闭环） |
 
 > 用 B03 的正确姿势：**先读完对应 A 序列 ref**，再回到这里看具象实现；不要跳过 A 序列直接照抄这里的细节。
@@ -299,4 +340,11 @@ useClickOutside(recentsRef, closeRecents);
 | 跳过 A 序列直接照抄 B03 的具象设计 | 抽象层与具象层混在一起——读到「`x-xxx-scope` 头」时不知道这是 [[A05]]「按 cwd 隔离」的具象，还是某个项目的特定设计；改规范时漏改 xxx 一侧 | 把 A 序列当必读前置；B03 只当「具象形态速查」，不替代规范 |
 | 把 B03 当成「扩展清单」去挂新模块 | 新模块通过 B03 就能加到 xxx 框架里，但 **server-cli-web 本身**并没把它当成骨架能力——下次别的项目复用又要重新设计 | 落在 [[A07-extension-loop]] 的 12 处闭环表里，而不是 B03 的子章节 |
 | 把 xxx 的具体路径/文件名当成硬规范 | xxx 是参考实现；`paths.js#cwdScope` 的归一化规则、`store.json` 的 scopes 形状都是**这一类项目**的形态，但每个项目的 `APP_NAME` / `recents` 上限 / KB 目录命名规则都不同 | B03 只描述「这一类项目怎么解」；具体阈值/命名到项目仓库或 [[A05]] 决定 |
-| 顶部目录下拉用原生 `<details>` 却不处理点击外部 | 点开「最近目录」后点页面别处菜单不收起，只能再点一次 summary——典型小 bug；选中目录后菜单也常停住不关 | 用第 4 节的 `useClickOutside`（pointerdown 外部 + Esc），并在选中项 onClick 里主动收起 |
+| 顶部目录下拉用原生 `<details>` 却不处理点击外部 | 点开「最近目录」后点页面别处菜单不收起，只能再点一次 summary——典型小 bug；选中目录后菜单也常停住不关 | 用第 4 节的收口方式（`mousedown`/`pointerdown` 外部 + Esc）：单下拉内联 effect 即可，多下拉抽 `useClickOutside`；并在选中项 onClick 里主动收起 |
+| 给下拉加「删除」后仍留在 `<details>` 形态 | `<details>` 的展开态是 DOM 原生属性（`ref.current.open`），与 React state 两套真相；且 `summary` 结构塞不下「切换 + 删除」两个动作 | 换受控 `<div>` + `useState(open)`（见第 4 节）；`<details>` 只在没有行内附加动作时才够用 |
+| 用 `click` 监听「点击外部」 | 与触发按钮自己的 `onClick` 同阶段冒泡：先关闭再被 `setOpen(true)` 抵消，表现为「点一下关了又弹开」 | 用 `mousedown` / `pointerdown`——早于 `click` 触发，天然避开 |
+| 行内删除按钮不 `stopPropagation` | 点 `×` 冒泡到行内切换按钮，条目删掉的同时还把 scope 切走了 | `×` 的 `onClick` 里 `e.stopPropagation()` |
+| 行内操作按钮常显 | 每行右侧糊成一团噪音，列表本体被抢焦点 | 绝对定位到右侧 + `opacity: 0`，父行 `:hover` 才 `opacity: 1`；主按钮 `padding-right` 留位防文字压字 |
+| 菜单用 `position: static` 进文档流 | header 是 `sticky`，菜单把 header 顶高、主体整块下移 | 菜单绝对定位悬挂（`absolute; right: 0; top: calc(100% + 6px)`），父容器 `position: relative` |
+| 添加/输入路径用 `window.prompt` | 原生弹窗样式与面板不是一个体系，且 `window.alert` 报错无法融入 toast | 走项目自己的 `useDialog` + `useGuard`/`useToast`（见第 4 节） |
+| 删除失败被 `.catch(() => {})` 吞掉 | 条目看起来还在，用户以为没点中，反复点 | 删除不吞异常——`removeRecent` 抛出，调用方 `guard` toast（切换可以乐观静默，删除不行） |

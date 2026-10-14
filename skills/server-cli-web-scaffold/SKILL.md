@@ -115,7 +115,7 @@ ref 分两个序列：
 | [[A09-template-generator]]    | **把项目沉淀为可重用模板时必读**——`templates/<id>/template.json` schema、`hooks.mjs` 三钩子契约（options / beforeGenerate / afterGenerate）、文本 vs 二进制分发（扩展名白名单）、防穿越（路径段 `..` / `.` / 盘符三道闸）、dry-run 与生成共用 `walkTemplate`、严格 vs 宽松双契约渲染、openFlags 开放选项、坏模板不吞也不中断、`generate.js` **永远不认识「图片」**——二进制产物由模板钩子产出 |
 | [[B01-browser-debugging]]    | **重量级排查，不接入创建流程**——当 Web 端问题反复出现、curl 正常但页面不对、或需要验证前后端连通性时才升级到这里：browser-harness 连 CDP 端点的 SOP（截图 / fetch 验证 / 注入 JS 模拟点击并观察按钮有效性 / 现象→层定位表）                                 |
 | [[B02-link-local-shim]]    | **重量级环境操作，不接入创建流程**——要让全局 `xxx` 命令实时指向本仓库（改码即生效）时：为什么覆盖式 shim 而非 npm link / volta install、RECEIPT 备份清单与重装保护、兜底落点与 PATH 写入的防御性细节、`--auto` 模式（CI 安全）、unlink 还原与真实事故时间线                                 |
-| [[B03-cwd-scope-registry]]    | **特殊化处理方案，不接入创建流程**——以真实落地项目为具象参考，看 A 序列规范在真实项目里「长什么样」：单一入口 + dev/prod 同入口、注册分组 + 一源三派生 + 装载期断言、cwd 作用域 + ALS + 跨项目面板、视图注册表驱动壳；**先读对应 A 序列 ref 才能看懂**（对照表见 ref 第六节）                                                                              |
+| [[B03-cwd-scope-registry]]    | **特殊化处理方案，不接入创建流程**——以真实落地项目为具象参考，看 A 序列规范在真实项目里「长什么样」：单一入口 + dev/prod 同入口、注册分组 + 一源三派生 + 装载期断言、cwd 作用域 + ALS + **跨项目面板（含最近目录下拉的交互与 CSS：受控下拉 / 点击外部收回 / 行内 hover 删按钮）**、视图注册表驱动壳；**先读对应 A 序列 ref 才能看懂**（对照表见 ref 第六节）                                                                              |
 | [[B04-multi-skill]]    | **skill 子命令扩展方案**——`skill install [name]\|--group <name>\|--to <dir>\|--force`、`skill list` 输出形态、`groups.json` schema 与降级策略（缺失/损坏时目录扫描兜底）、默认 install 与主 skill 同名约定；面向**给已有项目加多种 skill**时的扩展口径（不是创建决策，命名/定性差异见 ref 自身 frontmatter）                                                                                                                                         |
 | [[B05-multi-line-cli-input]]    | **多行 CLI 输入的 heredoc 处理方案**——多行参数跨 exec 边界被切的平台根因（实测 argv 9→5）、`-` 占位从 stdin 读的实现要点、AI 写 heredoc 的四种实测错误（定界符引号 / flag 位置 / EOF 缩进 / 漏 `-`）、spawnSync 隔离测试技巧；面向**给命令加多行文本参数**（任务描述 / 长规范 / prompt）时的扩展口径                                                                                                                                         |
 
@@ -288,3 +288,13 @@ B 序列原是"重操作 ref"（debug / shim / scope registry 等运行时动作
 | 发布步骤保留 `NODE_AUTH_TOKEN` + setup-node 带 `registry-url` | 令牌/残留 .npmrc 覆盖 OIDC 通道，报错仍是旧的令牌类症状，误导排查方向 | 模板写清「三个不要」；加 **OIDC 预检步骤**（环境注入 + ID token 获取），失败时一眼分清 GitHub 侧 vs npm 侧 |
 | 只把「网页配置」写进 SOP | 网页操作是 2FA 交互、agent 无法代跑，用户还得自己找入口 | SOP 以 **CLI（`npm trust`，npm ≥ 12）为首选**，网页作备选并注明「交互式，agent 不要代跑」 |
 | force push 覆盖远端后不处理 tag | 旧 tag 悬空指向被覆盖的提交（幂等判断会错乱） | 覆盖前把旧 head 存**本地** tag（`archive/*`）存档；远端旧 tag 需要时 `gh api -X DELETE .../git/refs/tags/<t>` 清理 |
+
+### 2026-10-13 · B03 第四节重做「跨项目面板 · 最近目录下拉」（受控化 + CSS 可复用点）
+
+| 错误操作 | 实际后果 | 正确做法 |
+| --- | --- | --- |
+| 往 B03（案例类 ref）里写内部真实项目名（`nx-rp` / `nx-rh`） | B03 虽按「规范用占位符、案例用实名」的惯例写真实路径，但**「实名」指的是主文档「参考实现」表已承认的抽象标签**（`xxx` / `参考实现项目` / `落地项目一` / `落地项目二`）；内部项目名不在承认集合里——读者环境里对不上任何一个词，成了死链接 | 本 skill 的操作记录里**本来就有这条对账 SOP**（写 ref 后跑 `grep -rn 'nx-'` 逐条核对是否被主文档承认），本次仍漏了一次。落盘前必跑；正文一律用 `xxx` 占位符 |
+| 重写一节时只改正文，不扫它引用的路径与旧形态 | §五 的文件表指向 `components/ui.jsx（useClickOutside）`，而该导出在参考实现里**根本不存在**（是 effect 内联在 App 壳）；§七 的错误案例还在教 `<details>` 的 `ref.current.open = false` 接线——ref 自相矛盾 | 重写一节的收尾动作 = 扫全 ref 里指向该形态的**所有**行（文件表 / 对照表 / 错误案例），一次改齐；改完 grep 旧关键词（如 `details`、`useClickOutside`）确认无残留 |
+| 把 CSS 只写成「长这样」，不写「为什么非得这样」 | 下个同类项目照抄 `opacity: 0 → :hover 1` 却不知道「用绝对定位而非 `visibility` 是为了防显隐时行宽抖动」，换个布局就退化；也没人知道主按钮不 `padding-right` 留位会让长路径压到按钮底下 | 每个 CSS 可复用点配一列「为什么」；把「漏了会怎样」同步进错误案例表（见 B03 第四节与第七节） |
+| 新增行内动作（删除）后仍留在原生 `<details>` 形态 | `<details>` 的展开态是 DOM 原生属性（`ref.current.open`），与 React state 两套真相；且 `summary` 塞不下「切换 + 删除」两个动作 | 一行要放两个动作时换受控 `<div>` + `useState(open)`；`<details>` 只在没有行内附加动作时才够用 |
+| 用 `click` 监听「点击外部」关闭下拉 | 与触发按钮自己的 `onClick` 同阶段冒泡：先 `setOpen(false)` 再被 `setOpen(true)` 抵消，表现为「点一下关了又弹开」 | 用 `mousedown` / `pointerdown`——早于 `click` 触发，天然避开 |

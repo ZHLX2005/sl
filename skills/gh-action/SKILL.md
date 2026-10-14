@@ -1,6 +1,6 @@
 ---
 name: gh-action
-description: Use when a GitHub Actions CI/CD workflow needs to be authored, debugged, monitored, or extended — covers battle-tested deploy templates (GHCR push + SSH deploy; self-contained docker save + SCP + docker load; Flutter Web → nginx on 82端口), the npm auto-publish pattern (`npm-publish.yml`, push to main + provenance), an Android release-signing CI template, a build-monitoring SOP (Monitor until success/failure, 三铁律, 失败分类重试), a debug workflow template for reproducing failures inside the Actions environment, a gh CLI troubleshooting runbook, gh repo/secret setup SOP, and a fork squash-release PR SOP. Triggers: "GitHub Actions 失败 / 卡住 / 401", "监控流水线 / monitor CI build / gh 监控 / 看下 CI 状态 / 构建为什么挂了 / CI 失败了看看", "debug CI / 容器在 CI 里起不来 / 要 Actions 环境的日志", "deploy.yml / 发布到 GHCR / SSH 部署", "publish to npm / npm publishing / npm-publish.yml", "GitHub Actions 写工作流", "服务器到 GHCR 网络慢 / 不依赖 registry / docker save + scp", "APK 签名 SHA 每次变 / 指纹漂移 / 覆盖安装失败 / INSTALL_FAILED_UPDATE_INCOMPATIBLE / CI 里配 keystore / release 签名", "Flutter web 部署 / flutter build web docker / nginx 部署 flutter / gh secret set SSH_KEY / deploy web 到服务器端口", "压缩领先 commit 再发版 / squash 后推到 upstream 然后 PR / open PR against upstream / fork 发版".
+description: Use when a GitHub Actions CI/CD workflow needs to be authored, debugged, monitored, or extended — covers battle-tested deploy templates (GHCR push + SSH deploy; self-contained docker save + SCP + docker load; Flutter Web → nginx on 82端口), the npm auto-publish pattern (`npm-publish.yml`, push to main + provenance), a Rust-CLI-via-npm distribution template (npx direct launch, bundled binary, sequenced build→commit→publish, package-name similarity probing), an Android release-signing CI template, a build-monitoring SOP (Monitor until success/failure, 三铁律, 失败分类重试), a debug workflow template for reproducing failures inside the Actions environment, a gh CLI troubleshooting runbook, gh repo/secret setup SOP, and a fork squash-release PR SOP. Triggers: "GitHub Actions 失败 / 卡住 / 401", "监控流水线 / monitor CI build / gh 监控 / 看下 CI 状态 / 构建为什么挂了 / CI 失败了看看", "debug CI / 容器在 CI 里起不来 / 要 Actions 环境的日志", "deploy.yml / 发布到 GHCR / SSH 部署", "publish to npm / npm publishing / npm-publish.yml", "Rust CLI 发 npm / npx 直启 / Rust 二进制分发 / 包名 too similar 被拒", "GitHub Actions 写工作流", "服务器到 GHCR 网络慢 / 不依赖 registry / docker save + scp", "APK 签名 SHA 每次变 / 指纹漂移 / 覆盖安装失败 / INSTALL_FAILED_UPDATE_INCOMPATIBLE / CI 里配 keystore / release 签名", "Flutter web 部署 / flutter build web docker / nginx 部署 flutter / gh secret set SSH_KEY / deploy web 到服务器端口", "压缩领先 commit 再发版 / squash 后推到 upstream 然后 PR / open PR against upstream / fork 发版".
 ---
 
 # gh-action
@@ -11,7 +11,7 @@ GitHub Actions CI/CD 通用 skill 仓库。**主页面仅做 ref 映射**,详细
 
 | 代号 | 类别 | 成员 |
 |---|---|---|
-| **A** | 具体语言/场景的 workflow 模板 | A01 GHCR 部署 / A02 无 registry 部署 / A03 npm 发布 / A04 Android 签名 / A05 Flutter Web 部署 |
+| **A** | 具体语言/场景的 workflow 模板 | A01 GHCR 部署 / A02 无 registry 部署 / A03 npm 发布 / A04 Android 签名 / A05 Flutter Web 部署 / A06 Rust CLI npm 分发 |
 | **B** | 通用 gh CLI 操作（不绑定语言场景，主动调 gh 查信息/排障/配置/发版） | B01 gh-troubleshoot / B02 gh-setup / B04 upstream-release |
 | **C** | CI 监控与远程调试（观测在跑的构建、失败后进 Actions 环境复现；C01→C02 是同一条链的两段） | C01 monitor-build / C02 debug-workflow |
 
@@ -24,6 +24,7 @@ GitHub Actions CI/CD 通用 skill 仓库。**主页面仅做 ref 映射**,详细
 | A02 | deploy-template-no-registry | 自包含部署模板(本地构建 → `docker save` → SCP → 服务器 `docker load`)。**不依赖 GHCR / 任何 registry**,适合服务器到 GHCR 网络慢/不通、单服务部署。末尾贴 `ve` 项目实战案例与 6 处差异。 | [[references/A02-deploy-template-no-registry]] |
 | A04 | android-signing-ci | CI 里的 Android release 签名干净模板(keystore 生成 → base64 灌 secret → 重建 → 构建 → 验签)。专治 **APK 签名 SHA 每次构建漂移 / 覆盖安装失败**:两层根因是 secret 没配 + keystore 步骤排在 build 之后。 | [[references/A04-android-signing-ci]] |
 | A05 | flutter-web-docker-deploy | Flutter Web → nginx 镜像全自动部署:`flutter build web` 产物拷进 `web_deploy/` context → save/scp/load → 服务器 82 端口。含 gh CLI 一条龙设 4 个 secret(SSH_KEY 走临时文件+LF 校验)、端到端自测 SOP、8 个实战坑。 | [[references/A05-flutter-web-docker-deploy]] |
+| A06 | rust-npm-cli | Rust 编译 CLI 经 npm 分发(npx 直启)的完整发行模板:JS 入口 + 平台 fallback 链、单包内嵌 vs 主包+平台子包的形态选择、构建→提交二进制回仓库→workflow_run 顺序化发布(GITHUB_TOKEN 推送不触发下游 workflow 的判据)、包名相似度审查探测 SOP、错误案例表。 | [[references/A06-rust-npm-cli]] |
 | B04 | upstream-release | Fork squash 发版 SOP:领先 commit soft reset 压缩 → `push --force-with-lease` → `gh pr create` → `--squash --delete-branch` → pr view 总结。base 自动探测(main/master)、两层失败诊断表、`--web` 兜底。原 `gh-upstream-release` skill 并入。 | [[references/B04-upstream-release]] |
 | C01 | monitor-build | 构建监控 SOP:Monitor 持续监控直到成功/失败,三铁律(验证优于假设 / Monitor 是用户特权 / 状态以 gh run view 为准),失败分类重试,上传超时实测判据实战案例。原 `gh-ci` skill 并入。 | [[references/C01-monitor-build]] |
 | C02 | debug-workflow | Actions 环境远程复现诊断:debug workflow 模板(workflow_dispatch + docker compose up 带 timeout-minutes),触发监控、拉环境日志。本地无法复现/容器在 CI 起不来时用。原 `gh-ci` skill 并入。 | [[references/C02-debug-workflow]] |
@@ -34,6 +35,7 @@ GitHub Actions CI/CD 通用 skill 仓库。**主页面仅做 ref 映射**,详细
 - **单服务 + 网络差/不想管 registry token** → A02 `deploy-template-no-registry`
 - **Flutter web 部署到自建服务器 / flutter build web + nginx docker** → A05 `flutter-web-docker-deploy`
 - **写 npm 包发布** → A03 `npm-publish`
+- **Rust CLI 经 npm 分发 / npx 直启 / Rust 二进制随包发 / 包名 too similar 被 npm 拒** → A06 `rust-npm-cli`
 - **CI 里出 Android APK / 签名指纹漂移 / 装不上要卸载** → A04 `android-signing-ci`
 - **CI 跑挂了 / 卡住 / 要用 gh CLI 查 run、log、release 等 GitHub 侧信息** → B01 `gh-troubleshoot`
 - **仓库还没建 / secret 还没配 / token 要设进 CI / 提高积极性主动配环境** → B02 `gh-setup`
