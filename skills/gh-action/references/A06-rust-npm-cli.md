@@ -18,10 +18,10 @@
 
 ## 形态选择：单包内嵌 vs 主包+平台子包
 
-| 形态 | 结构 | 何时用 |
-| --- | --- | --- |
-| **单包内嵌**（本 ref 默认） | 一个 npm 包，二进制放 `binaries/<platform>-<arch>/` 随包发布 | 平台数 ≤ 2、二进制体积可接受（< 10 MB）。发布链路只有一条，最简 |
-| **主包 + 平台子包** | 主包 JS-only，每个平台一个子包，主包用 `optionalDependencies` 拉取 | 平台多（win/mac/linux × x64/arm64）、或想控制主包体积。代价：每个子包一条发布链路，版本同步成本翻倍 |
+| 形态                              | 结构                                                                 | 何时用                                                                                               |
+| --------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **单包内嵌**（本 ref 默认） | 一个 npm 包，二进制放 `binaries/<platform>-<arch>/` 随包发布       | 平台数 ≤ 2、二进制体积可接受（< 10 MB）。发布链路只有一条，最简                                     |
+| **主包 + 平台子包**         | 主包 JS-only，每个平台一个子包，主包用 `optionalDependencies` 拉取 | 平台多（win/mac/linux × x64/arm64）、或想控制主包体积。代价：每个子包一条发布链路，版本同步成本翻倍 |
 
 **建议从单包起步**。二进制变大或多平台了再拆子包，拆的成本远低于一开始就维护错。
 
@@ -265,17 +265,17 @@ npm unpublish <candidate>@0.0.1-probe --force --registry https://registry.npmjs.
 
 ## 错误案例
 
-| 错误操作 | 实际后果 | 正确做法 |
-|---|---|---|
-| push 同时触发 build 和 publish | npm 上发出去的是仓库里的旧二进制 | workflow_run 顺序化：publish 挂在 build 完成后 |
-| publish 侧用默认 checkout | 拿到的是 main HEAD，可能不含刚提交的二进制 | `ref: ${{ github.event.workflow_run.head_sha }}` |
-| 跨 workflow 下载 artifact 不传 `run-id` | `Artifact not found`（默认查自己的 run） | 要么补 `run-id: ${{ github.event.workflow_run.id }}`，要么改走 git 提交 |
-| 二进制 `--help` 冒烟通过就发布 | 用户端 `npx` 因路径解析错误跑不起来 | 补 JS resolver 冒烟层 |
-| `package.json` 漏 `os`/`cpu` | 不支持平台装上了，运行时报神秘错 | 显式声明，让 npm 安装期就拒绝 |
-| 漏 `repository.url` | `--provenance` 报 EUSAGE | 补 repository 字段（同 A03） |
-| Cargo 与 npm 版本号分头改 | 二进制 `--version` 与包版本对不上，排查浪费时间 | 两条线同步 bump；或 CI 加一致性校验 |
-| CI 里 `cargo build` 不带 `--locked` | Cargo.lock 未提交时 CI 随机解析新依赖，构建不可复现 | 提交 Cargo.lock + `--locked` |
-| publish 步骤只给 `NODE_AUTH_TOKEN` 但没跑 setup-node | ENEEDAUTH（该变量靠 setup-node 生成的 .npmrc 引用才生效） | setup-node + `registry-url`，或直接用 `NPM_TOKEN` |
+| 错误操作                                               | 实际后果                                                  | 正确做法                                                                  |
+| ------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| push 同时触发 build 和 publish                         | npm 上发出去的是仓库里的旧二进制                          | workflow_run 顺序化：publish 挂在 build 完成后                            |
+| publish 侧用默认 checkout                              | 拿到的是 main HEAD，可能不含刚提交的二进制                | `ref: ${{ github.event.workflow_run.head_sha }}`                        |
+| 跨 workflow 下载 artifact 不传 `run-id`              | `Artifact not found`（默认查自己的 run）                | 要么补 `run-id: ${{ github.event.workflow_run.id }}`，要么改走 git 提交 |
+| 二进制 `--help` 冒烟通过就发布                       | 用户端 `npx` 因路径解析错误跑不起来                     | 补 JS resolver 冒烟层                                                     |
+| `package.json` 漏 `os`/`cpu`                     | 不支持平台装上了，运行时报神秘错                          | 显式声明，让 npm 安装期就拒绝                                             |
+| 漏 `repository.url`                                  | `--provenance` 报 EUSAGE                                | 补 repository 字段（同 A03）                                              |
+| Cargo 与 npm 版本号分头改                              | 二进制 `--version` 与包版本对不上，排查浪费时间         | 两条线同步 bump；或 CI 加一致性校验                                       |
+| CI 里 `cargo build` 不带 `--locked`                | Cargo.lock 未提交时 CI 随机解析新依赖，构建不可复现       | 提交 Cargo.lock + `--locked`                                            |
+| publish 步骤只给 `NODE_AUTH_TOKEN` 但没跑 setup-node | ENEEDAUTH（该变量靠 setup-node 生成的 .npmrc 引用才生效） | setup-node + `registry-url`，或直接用 `NPM_TOKEN`                     |
 
 ---
 

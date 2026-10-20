@@ -1,22 +1,23 @@
 ---
 name: sl-git-standard
-description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓库的 .gitignore 控制（隔离/白名单/部分跟踪）+ git.remote 清单与 .claude/repo 克隆的一致性维护（check / extract / sync，跨平台 Python 脚本）+ 提交快照（commit 浅克隆存档到 .claude/repo/project/，跨平台 Python）+ Gitee → GitHub 跨平台迁移与远程重置。当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、"部分跟踪"、"白名单子目录"、"忽略 .tool/"、"提取 remote"、"git.remote"、"check 一致性"、"sync 参考仓库"、"prune 旧仓库"、"同步检查补充"、"巡检参考仓库"、"把本地仓库提交进 git.remote"、"为这个 commit 创建快照"、"快照当前项目状态"、"管理快照保留数量"、"从 Gitee 迁移到 GitHub"、"切远程到 GitHub"、"管理员已建好仓库"、"重置远程"时触发。也用于创建新项目时的 git 标准初始化。
+description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓库的 .gitignore 控制（隔离/白名单/部分跟踪）+ git.remote 清单与 .claude/repo 克隆的一致性维护（check / extract / sync，跨平台 Python 脚本）+ 提交快照（commit 浅克隆存档到 .claude/repo/project/，跨平台 Python）+ Gitee → GitHub 跨平台迁移与远程重置 + CHANGELOG.md 初始化（每个标准仓库的硬性要求）。当用户提到"清理git"、"处理嵌套仓库"、"git隔离"、"保持干净"、"部分跟踪"、"白名单子目录"、"忽略 .tool/"、"提取 remote"、"git.remote"、"check 一致性"、"sync 参考仓库"、"prune 旧仓库"、"同步检查补充"、"巡检参考仓库"、"把本地仓库提交进 git.remote"、"为这个 commit 创建快照"、"快照当前项目状态"、"管理快照保留数量"、"从 Gitee 迁移到 GitHub"、"切远程到 GitHub"、"管理员已建好仓库"、"重置远程"、"初始化 changelog"、"CHANGELOG.md"、"git 标准要 changelog"、"补 changelog"、"新项目 changelog"时触发。也用于创建新项目时的 git 标准初始化。
 ---
 # sl-git-standard — Git 仓库心智扁平化标准
 
-一个 skill 管 git 仓库标准与本地操作的四件事：**不让克隆仓库污染宿主仓库**（A：.gitignore 控制）、**把 `.claude/repo/` 参考仓库与 `www/git.remote` 清单对齐**（B：check 预览差异 / extract 提取 / sync 双向收敛）、**为 commit 创建可浏览的历史快照**（D：浅克隆存档到 `.claude/repo/project/`）、**跨平台迁移与远程重置**（F：Gitee→GitHub / 管理员已建仓场景）。共同目标——`.claude/repo/` 作为参考仓库区被"扁平化"：宿主 git status 永远干净，参考仓库的来源与状态随时可追溯、可重建，项目历史可快照回看。
+一个 skill 管 git 仓库标准与本地操作的四件事：**让仓库符合「项目标准」**（A：`.gitignore` 控制 + `CHANGELOG.md` 硬性要求，两条缺一不可）、**把 `.claude/repo/` 参考仓库与 `www/git.remote` 清单对齐**（B：check 预览差异 / extract 提取 / sync 双向收敛）、**为 commit 创建可浏览的历史快照**（D：浅克隆存档到 `.claude/repo/project/`）、**跨平台迁移与远程重置**（F：Gitee→GitHub / 管理员已建仓场景）。共同目标——`.claude/repo/` 作为参考仓库区被"扁平化"：宿主 git status 永远干净，参考仓库的来源与状态随时可追溯、可重建，项目历史可快照回看。
 
 ## 序列总览（先读这里）
 
 | 序列 | 类别 | 成员 |
 |---|---|---|
-| **A** | .gitignore 控制（隔离/白名单/部分跟踪/工具目录） | [[A01-gitignore-控制]] |
+| **A** | 项目标准（`.gitignore` 控制 + `CHANGELOG.md` 硬性要求，两条缺一不可） | [[A01-gitignore-控制]] + [[A02-changelog-初始化]] |
 | **B** | repo 元数据一致性（check/extract/sync） | [[B01-repo-gitlink-提取]] |
 | **D** | 提交快照（commit 浅克隆存档） | [[D01-commit-snapshot]] |
 | **F** | 跨平台迁移（Gitee→GitHub / 远程重置） | [[F01-gitee-to-github-migration]] + [[F02-remote-reset]] |
 
 > 编号规则：动作 ref 从 `01` 起编号。新场景进对应序列续号（A02 / B02 / D02 / F03 起）。
 > C / E 代号**预留未用**（曾考虑 tagcli / worktree，按用户决定不并入，保持独立 skill）。
+> A 序列当前含 A01（.gitignore）+ A02（changelog），两条都是「标准声明」硬性要求；新场景续号 A03 起（不区分 .gitignore / changelog）。
 
 ## 核心原则
 
@@ -32,7 +33,16 @@ description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓�
 
 被主动调用做仓库例行维护时（"同步检查补充"、"巡检参考仓库"、"把本地 repo 提交进 git.remote"），B 序列按固定顺序跑：**解释器预检 → check → extract 回填 → missing 先问再 clone**。哪步直接做、哪步必须问用户，详见 [[B01-repo-gitlink-提取]] 的「主动调用默认 SOP」表。纪律一句话：**回填即做并提交清单，缺失即问，prune 必问。**
 
-## 标准声明结构（.gitignore 默认整块）
+## 项目标准声明（A 序列：两条硬性要求）
+
+A 序列 = 项目标准。任何按本 skill 初始化的仓库必须满足两条：
+
+1. **`.gitignore`**：默认整块写入（见下）。A01。
+2. **`CHANGELOG.md`**：仓库根目录，Keep a Changelog 格式。A02。
+
+第二条（CHANGELOG.md）的格式规范、初始化 SOP、常见错误与验收清单见 [[A02-changelog-初始化]]。以下仅展开第一条（.gitignore）的整块写法。
+
+## 项目标准 · .gitignore 默认整块
 
 ```gitignore
 # ============================================================
@@ -51,7 +61,7 @@ description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓�
 .tool/
 ```
 
-三条硬规则：
+三条硬规则（针对 `.gitignore` 整块）：
 
 1. **整块写入，即使 `_read/`、`_self/`、`.tool/` 目前不存在**（原则 1）。
 2. 白名单目录不存在时，整块行为与"完全忽略"完全一致，零副作用。
@@ -66,6 +76,7 @@ description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓�
 | **D** | 提交快照（commit 浅克隆存档）                        | "为这个 commit 创建快照"、"快照当前项目状态"、"管理快照保留数量"             | 需要为指定 commit 创建可浏览快照存档、对比不同 commit 之间的快照      | [[D01-commit-snapshot]] |
 | **F** | 跨平台迁移（完整迁移）                                | "从 Gitee 迁移到 GitHub"、"切远程到 GitHub"                                 | 自己迁移，`gh repo create` 一步到位                                   | [[F01-gitee-to-github-migration]] |
 | **F** | 跨平台迁移（远程重置）                                | "管理员已建好仓库"、"重置远程"、"直接 add origin"                           | 仓库已在远端建好，只切远程 + pull                                     | [[F02-remote-reset]] |
+| **A** | CHANGELOG 硬性要求（标准仓库必须有）                  | "初始化 changelog"、"CHANGELOG.md"、"git 标准要 changelog"、"补 changelog"、"新项目 changelog" | 新建仓库时与 A01 同步落地；存量仓库补齐基线；维护时每次合并前补 [Unreleased] | [[A02-changelog-初始化]] |
 |      | 新项目 git 标准初始化                                | 新仓库首次配置 .gitignore                                                    | 复用 A + B，先读 A                                                    | 同上（组合场景）                           |
 
 ## 文件索引
@@ -79,14 +90,15 @@ description: Git 仓库标准与本地操作——.claude/repo 嵌套克隆仓�
 | 提交快照 SOP/命令速查/错误处理                   | `references/D01-commit-snapshot.md` |
 | Gitee→GitHub 迁移 SOP/错误案例                  | `references/F01-gitee-to-github-migration.md` |
 | 远程重置 SOP                                     | `references/F02-remote-reset.md`   |
+| Changelog 初始化 SOP（标准仓库硬性要求）         | `references/A02-changelog-初始化.md` |
 
 ## 续号规则
 
-- 新的 .gitignore 场景 → A 序列，A02 起
+- A 序列当前含 A01（.gitignore）+ A02（changelog），两条都是「标准声明」硬性要求；新场景续号 A03 起（不区分 .gitignore / changelog）
 - 新的 check/extract/sync 变种 → B 序列，B02 起
 - 新的快照场景（对比/导出）→ D 序列，D02 起
 - 新的跨平台迁移场景 → F 序列，F03 起
-- 新的独立主题（非以上 4 类）→ 新序列代号，跳过预留的 C / E
+- 新的独立主题（非以上 4 类）→ 新序列代号，仍跳过预留的 C / E
 
 ## 与其他 skill 的协作
 

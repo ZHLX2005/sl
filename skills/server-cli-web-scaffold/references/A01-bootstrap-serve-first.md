@@ -109,6 +109,125 @@ export function startServer({ port, host = '127.0.0.1' } = {}) {
 启动后打印三行：面板地址、存储路径、`--json` 提示。
 `--no-open` 是给开发与 CI 用的——自动化场景不能弹浏览器。
 
+### 端口被占用时怎么办
+
+端口冲突**绝大多数情况不是故障，是「我自己已经开着一个」**——用户早就起过一遍，
+换个终端再敲一次 `serve`，得到的却是一句「端口已被占用，请换一个」，浏览器也不会自动打开。
+
+所以 `serve` 的端口冲突必须走**两条分支**，而不是抛错：
+
+| 分支 | 判定 | 处置 |
+| --- | --- | --- |
+| **reuse** | 占用者就是**本项目自己的面板** | 不再起第二个进程，打印「已在运行」，**打开浏览器指向它**，正常退出 |
+| **shift** | 占用者是别的服务 / 探测不出来 | 顺延到下一个空闲端口起自己的面板，打印占用者身份，**打开浏览器指向新面板** |
+
+两条分支**都会打开浏览器**——除非被下面的开关关掉。
+
+**认领签名**固定为 `GET /api/bootstrap` 里的 `app.name`：
+
+- 所有面板的 bootstrap 响应都必须带 `app: { name: APP_NAME, version: VERSION }`
+  （增量字段，不改已有字段，前端读不到也不受影响）。
+- `app.name` 相等 ⇒ 是自己的面板（reuse）；不相等或探测失败 ⇒ 别人（shift）。
+
+**为什么用 `app.name` 而不是端口号**：端口号只说明「那儿有个东西」，
+`app.name` 才回答「那个东西**是不是我**」——复用判定必须问后者。
+
+**唯一的关闭开关**是环境变量（跨项目统一，一个名字）：
+
+```
+NX_SERVE_NO_OPEN=1     # 所有 nx-xx 项目统一认这一个变量
+```
+
+- 取值 `1` / `true` / `yes` / `on` 算「开」；`0` / 空不算。
+- 设为真值时**完全不打开浏览器**（正常启动与端口复用两条路径都算）。
+- 命令行 `--no-open` 只管这一次；两者是「或」关系，任一为真即不打开。
+- **不要加项目前缀**（不是 `NX_SK_NO_OPEN`）——前缀会让「一个变量关掉所有项目」这件事失效。
+
+要一次性对本机所有 nx-xx 项目关掉，在 shell 里设一次即可：
+
+```bash
+# 当前 shell
+NX_SERVE_NO_OPEN=1 nx-xx serve
+
+# Windows 用户级（永久，对所有新开的终端生效）
+setx NX_SERVE_NO_OPEN 1
+```
+
+这段逻辑零业务语义，属于 `core/`：
+
+```js
+// core/serve-port.js
+export const NO_OPEN_ENV = 'NX_SERVE_NO_OPEN';
+export function autoOpenEnabled(flagNoOpen) { /* flag > env > 默认允许 */ }
+export async function probePanel(port, host, timeoutMs, headers) { /* GET /api/bootstrap */ }
+export function findFreePort(start, host) { /* 从 start 起逐个试，最多 50 个 */ }
+export async function resolvePortConflict(port, appName, host, headers) { /* → reuse | shift */ }
+```
+
+`cmdServe` 的形状：
+
+```js
+const canOpen = autoOpenEnabled(ctx['no-open']);
+let server;
+try {
+  server = await startServer({ port: desiredPort, host });
+} catch (err) {
+  if (!err || err.code !== 'EADDRINUSE') throw err;
+  const decision = await resolvePortConflict(desiredPort, APP_NAME, host);
+  if (decision.action === 'reuse') {
+    console.log(APP_NAME + ' 已在运行：' + addr);
+    if (canOpen) openBrowser(addr);
+    return;
+  }
+  console.log(`端口 ${desiredPort} 已被占用（占用者: ${describeOccupant(decision.occupant)}），改用 ${decision.port}`);
+  server = await startServer({ port: decision.port, host });
+}
+```
+
+**dev 脚本同理**：`scripts/dev.mjs` 里「后端端口被占就 `process.exit(1)`」是最劝退的一处——
+它把「我自己已经开着」误判成故障。改成复用已跑的面板（不再 spawn 第二个 `serve`）+ 开浏览器；
+vite 端口仍保持中止（vite 用 `--strictPort`，没法复用）。
+
+**但 dev 还有第二层坑：代理目标必须跟着后端走**。
+dev 模式下 vite 负责前端、后端负责 `/api`，两者靠 vite 的 `server.proxy.target` 连起来。
+如果 `serve` 自己顺延了端口而 vite 的代理还指着老端口，dev 前端就会去连**占用那个端口的
+别人**：页面能开、数据全错——比直接报错难查得多。
+
+所以 dev 的正确顺序是**先谈定端口再起进程**：
+
+```js
+// scripts/dev.mjs：端口先解析，结果同时交给 vite 与 serve
+let BACKEND_PORT = DESIRED_BACKEND_PORT;
+if (await portBusy(DESIRED_BACKEND_PORT)) {
+  const panel = await probePanel(DESIRED_BACKEND_PORT, '127.0.0.1');
+  if (panel?.app?.name === APP_NAME) {
+    reuseBackend = true;              // 复用，不起第二个 serve
+  } else {
+    BACKEND_PORT = await findFreePort(DESIRED_BACKEND_PORT + 1, '127.0.0.1');
+  }
+}
+start('vite', [...], { XXX_PORT: String(BACKEND_PORT) });          // 代理目标读这个
+start('serve', [..., '--port', String(BACKEND_PORT)], { ... });      // serve 只认 flag，不读环境变量
+```
+
+配套的两件事：
+
+- `vite.config` 的代理目标要**读环境变量**（`Number(process.env.XXX_PORT) || 默认端口`），
+  否则「换一组端口跑 dev」根本换不动。
+- 端口要**用 `--port` 明确告诉 serve**：`serve` 只认命令行 flag，不读环境变量。
+  只给环境变量的话，serve 会去用它的默认端口，和 vite 的代理对不上。
+
+| 错误操作 | 实际后果 | 正确做法 |
+| --- | --- | --- |
+| 端口被占就抛 `external('端口 N 已被占用')` | 用户明明已经开着面板，却既看不到它也拿不到地址，只能自己猜端口 | 走 reuse 分支，**开浏览器**指向已在跑的面板 |
+| 端口被占就 `process.exit(1)` | 「我自己已经启动」被当成故障，dev 一起来就死 | 探测占用者，是自己就复用 |
+| shift 分支也去开占用端口 | 浏览器里出现的是**别的项目**的面板，比不开更糟 | shift 分支开**自己新起的那个端口** |
+| 关闭开关写成 `NX_<项目>_NO_OPEN` | 一个变量关不掉全部项目，「统一关闭」名存实亡 | 固定 `NX_SERVE_NO_OPEN` |
+| 复用判定靠端口号 / 进程名 | 换个端口就认不出来，`--port` 直接把复用功能废掉 | 靠 `app.name` |
+| bootstrap 没有 `app` 段 | 探测认不出自己，复用分支永远不触发（表现为总在换端口） | bootstrap 必须带 `app: { name, version }` |
+| dev 里放任 `serve` 自己顺延端口 | vite 代理还指着老端口 → dev 前端连到占用那个端口的**别人** | dev 脚本先解析端口，代理目标与 serve 一起跟着走 |
+| 只给 serve 传环境变量、不传 `--port` | serve 仍用默认端口，与 vite 的代理对不上 | 端口用 `--port` 明确告诉 serve |
+
 ## 四、dev 与 prod 两种模式
 
 ```js
