@@ -15,6 +15,20 @@ claude plugin install sl@sl
 /reload-plugins
 ```
 
+## Mod 列表
+
+| Mod | 描述 |
+|------|------|
+| `session-bridge` | 提供本地 HTTP 接口，按工作目录向存活的 Claude Code 会话发送提示词并获取回复 |
+
+安装 mod：
+
+```bash
+/plugin install session-bridge --marketplace ZHLX2005/sl
+```
+
+`session-bridge` 默认监听 `127.0.0.1:8787`，控制台地址为 `http://127.0.0.1:8787/`。更多接口用法见 [`mods/session-bridge/README.md`](mods/session-bridge/README.md)。
+
 ## 技能列表
 
 | 技能 | 命令 | 描述 |

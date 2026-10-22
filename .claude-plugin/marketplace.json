@@ -15,6 +15,16 @@
         "name": "ZHLX2005",
         "url": "https://github.com/ZHLX2005"
       }
+    },
+    {
+      "name": "session-bridge",
+      "description": "Exposes a local HTTP endpoint that sends prompts to live Claude Code sessions by working directory.",
+      "version": "0.1.0",
+      "source": "./mods/session-bridge",
+      "author": {
+        "name": "ZHLX2005",
+        "url": "https://github.com/ZHLX2005"
+      }
     }
   ]
 }

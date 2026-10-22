@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>session-bridge 控制台</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --panel-2: #1e222b;
+        --line: #2a2f3a;
+        --text: #e6e8ee;
+        --dim: #939aab;
+        --accent: #6ea8fe;
+        --good: #5ad19a;
+        --bad: #f2726f;
+        --warn: #e8c069;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+      header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .02em; }
+      h2 { font-size: 13px; margin: 0 0 12px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+      main { padding: 24px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); align-items: start; }
+      section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+      .full { grid-column: 1 / -1; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .grow { flex: 1; min-width: 180px; }
+      input, textarea, button {
+        font: inherit;
+        color: var(--text);
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 8px 10px;
+      }
+      input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+      textarea { width: 100%; min-height: 96px; resize: vertical; font-family: var(--mono); font-size: 13px; }
+      button { cursor: pointer; background: #232936; }
+      button:hover:not(:disabled) { border-color: var(--accent); }
+      button:disabled { opacity: .5; cursor: default; }
+      button.primary { background: #24406e; border-color: #33578f; }
+      .mono { font-family: var(--mono); font-size: 12.5px; }
+      .dim { color: var(--dim); }
+      .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+      .dot.on { background: var(--good); }
+      .dot.off { background: var(--bad); }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { color: var(--dim); font-weight: 500; font-size: 12px; }
+      td.path { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+      td.id { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+      pre {
+        margin: 0;
+        background: #10131a;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 340px;
+        overflow: auto;
+      }
+      #log { max-height: 240px; }
+      .logline { border-bottom: 1px solid #1c202a; padding: 3px 0; display: flex; gap: 10px; }
+      .logline .t { color: var(--dim); font-family: var(--mono); font-size: 11.5px; }
+      .logline .m { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+      .ok { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+      .answer { white-space: pre-wrap; word-break: break-word; }
+      .hidden { display: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>session-bridge 控制台</h1>
+      <span class="pill" id="status"><span class="dot" id="dot"></span><span id="statusText">连接中…</span></span>
+      <span class="dim mono" id="endpoint"></span>
+      <span class="grow"></span>
+      <label class="dim mono" for="token">token</label>
+      <input class="mono" id="token" style="width: 260px" autocomplete="off" spellcheck="false" />
+      <button id="toggleToken">显示</button>
+      <button id="reload">刷新</button>
+    </header>
+
+    <main>
+      <section>
+        <h2>存活会话</h2>
+        <div class="row" style="margin-bottom: 12px">
+          <input class="grow mono" id="filterCwd" placeholder="按目录筛选：cwd（留空看全部）" spellcheck="false" />
+          <button id="filter">查询</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>工作目录</th><th>sessionId</th><th>端口</th><th></th></tr>
+          </thead>
+          <tbody id="sessions"></tbody>
+        </table>
+        <div class="row" style="margin-top: 12px">
+          <span class="dim" id="count"></span>
+        </div>
+      </section>
+
+      <section>
+        <h2>按目录取 sessionId</h2>
+        <div class="row" style="margin-bottom: 12px">
+          <input class="grow mono" id="lookupCwd" placeholder="cwd，例如 D:/code/my-project" spellcheck="false" />
+          <button id="lookup">GET /sessions?cwd=</button>
+        </div>
+        <pre id="lookupOut" class="dim">尚未查询</pre>
+      </section>
+
+      <section class="full">
+        <h2>发送提示词</h2>
+        <div class="row" style="margin-bottom: 12px">
+          <input class="grow mono" id="sendCwd" placeholder="目标目录 cwd" spellcheck="false" />
+          <input class="mono" id="sendSession" placeholder="sessionId（可空，取最新）" style="width: 300px" spellcheck="false" />
+          <input class="mono" id="sendTimeout" placeholder="超时 ms" style="width: 120px" value="600000" />
+        </div>
+        <textarea id="prompt" placeholder="要发给那个会话的提示词…"></textarea>
+        <div class="row" style="margin-top: 12px">
+          <button class="primary" id="send">发送</button>
+          <span class="dim" id="sendState"></span>
+        </div>
+        <pre id="answer" class="hidden answer"></pre>
+      </section>
+
+      <section class="full">
+        <h2>日志</h2>
+        <div id="log"></div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const state = { token: '', filter: '' }
+
+      function log(message, kind = '') {
+        const line = document.createElement('div')
+        line.className = 'logline'
+        const time = document.createElement('span')
+        time.className = 't'
+        time.textContent = new Date().toLocaleTimeString()
+        const text = document.createElement('span')
+        text.className = 'm ' + kind
+        text.textContent = message
+        line.append(time, text)
+        $('log').prepend(line)
+      }
+
+      function setStatus(up, text) {
+        $('dot').className = 'dot ' + (up ? 'on' : 'off')
+        $('statusText').textContent = text
+      }
+
+      async function api(path, init = {}) {
+        const headers = Object.assign({ 'x-bridge-token': state.token }, init.headers || {})
+        const response = await fetch(path, Object.assign({}, init, { headers }))
+        const text = await response.text()
+        let body
+        try { body = JSON.parse(text) } catch { body = text }
+        return { status: response.status, body }
+      }
+
+      async function loadToken() {
+        const { status, body } = await api('/token')
+        if (status === 200 && body && body.token) {
+          state.token = body.token
+          $('token').value = body.token
+          $('token').type = 'password'
+          log('token 已从桥接取得', 'ok')
+          return true
+        }
+        log('取 token 失败（HTTP ' + status + '），请手动填入', 'warn')
+        return false
+      }
+
+      function renderSessions(sessions) {
+        const tbody = $('sessions')
+        tbody.textContent = ''
+        for (const entry of sessions) {
+          const row = document.createElement('tr')
+          const cwd = document.createElement('td')
+          cwd.className = 'path'
+          cwd.textContent = entry.cwd
+          const id = document.createElement('td')
+          id.className = 'id'
+          id.textContent = entry.sessionId
+          const port = document.createElement('td')
+          port.className = 'id'
+          port.textContent = entry.port
+          const pick = document.createElement('td')
+          const button = document.createElement('button')
+          button.textContent = '选中'
+          button.onclick = () => {
+            $('sendCwd').value = entry.cwd
+            $('sendSession').value = entry.sessionId
+            $('filterCwd').value = entry.cwd
+            log('已选中 ' + entry.sessionId, 'dim')
+          }
+          pick.append(button)
+          row.append(cwd, id, port, pick)
+          tbody.append(row)
+        }
+        $('count').textContent = sessions.length ? sessions.length + ' 个存活会话' : '没有存活会话'
+      }
+
+      async function loadSessions() {
+        const path = state.filter ? '/sessions?cwd=' + encodeURIComponent(state.filter) : '/sessions'
+        const { status, body } = await api(path)
+        if (status !== 200) {
+          setStatus(false, 'HTTP ' + status)
+          log('取会话列表失败：' + JSON.stringify(body), 'bad')
+          return
+        }
+        setStatus(true, '桥接在线')
+        if (state.filter) {
+          $('count').textContent = '匹配 ' + body.sessionIds.length + ' 个：' + (body.sessionIds.join(', ') || '无')
+          log('查询 ' + state.filter + ' → ' + (body.sessionIds.join(', ') || '无'), 'ok')
+        } else {
+          renderSessions(body.sessions)
+          log('存活会话 ' + body.sessions.length + ' 个', 'dim')
+        }
+      }
+
+      async function lookup() {
+        const cwd = $('lookupCwd').value.trim()
+        if (!cwd) { $('lookupOut').textContent = '先填一个 cwd'; return }
+        const { status, body } = await api('/sessions?cwd=' + encodeURIComponent(cwd))
+        $('lookupOut').textContent = 'HTTP ' + status + '\n' + JSON.stringify(body, null, 2)
+        log('查询 ' + cwd + ' → HTTP ' + status, status === 200 ? 'ok' : 'bad')
+      }
+
+      async function send() {
+        const cwd = $('sendCwd').value.trim()
+        const text = $('prompt').value
+        if (!cwd) { $('sendState').textContent = '先填目标目录'; return }
+        if (!text.trim()) { $('sendState').textContent = '先写提示词'; return }
+        const payload = { cwd, prompt: text }
+        if ($('sendSession').value.trim()) payload.session = $('sendSession').value.trim()
+        if ($('sendTimeout').value.trim()) payload.timeoutMs = Number($('sendTimeout').value)
+        $('send').disabled = true
+        $('sendState').textContent = '发送中…（会话空闲后才开始，通常几秒到几十秒）'
+        $('answer').classList.remove('hidden')
+        $('answer').textContent = '等待会话回答…'
+        const started = Date.now()
+        log('→ POST /prompt ' + JSON.stringify({ cwd: payload.cwd, session: payload.session || '(最新)' }), 'dim')
+        try {
+          const { status, body } = await api('/prompt', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          const seconds = ((Date.now() - started) / 1000).toFixed(1)
+          $('sendState').textContent = 'HTTP ' + status + ' · ' + seconds + 's'
+          $('answer').textContent = typeof body === 'string' ? body : JSON.stringify(body, null, 2)
+          log('← HTTP ' + status + ' (' + seconds + 's) ' + (body && body.ok ? 'ok' : 'bad'), body && body.ok ? 'ok' : 'bad')
+        } catch (error) {
+          $('sendState').textContent = '失败：' + error.message
+          $('answer').textContent = String(error)
+          log('请求失败：' + error.message, 'bad')
+        } finally {
+          $('send').disabled = false
+        }
+      }
+
+      $('toggleToken').onclick = () => {
+        const field = $('token')
+        field.type = field.type === 'password' ? 'text' : 'password'
+        $('toggleToken').textContent = field.type === 'password' ? '显示' : '隐藏'
+      }
+      $('token').oninput = (event) => { state.token = event.target.value; localStorage.setItem('sb-token', state.token) }
+      $('filter').onclick = () => { state.filter = $('filterCwd').value.trim(); loadSessions() }
+      $('lookup').onclick = lookup
+      $('send').onclick = send
+      $('reload').onclick = async () => {
+        state.filter = ''
+        $('filterCwd').value = ''
+        await loadSessions()
+      }
+
+      ;(async () => {
+        $('endpoint').textContent = location.origin
+        const saved = localStorage.getItem('sb-token')
+        if (saved) { state.token = saved; $('token').value = saved; $('token').type = 'password' }
+        const { status, body } = await api('/health')
+        if (status === 200) {
+          setStatus(true, '桥接在线 · ' + body.sessions + ' 个会话')
+          log('桥接健康检查通过', 'ok')
+          if (!state.token) await loadToken()
+          await loadSessions()
+        } else {
+          setStatus(false, '桥接不可达')
+          log('桥接健康检查失败：HTTP ' + status, 'bad')
+        }
+      })()
+    </script>
+  </body>
+</html>

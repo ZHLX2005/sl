@@ -1,0 +1,31 @@
+{
+  "name": "session-bridge",
+  "version": "0.1.0",
+  "description": "Exposes a local HTTP endpoint that sends a prompt to a live Claude Code session, chosen by the directory it runs in.",
+  "license": "MIT",
+  "author": {
+    "name": "ZHLX2005",
+    "url": "https://github.com/ZHLX2005"
+  },
+  "repository": "https://github.com/ZHLX2005/sl",
+  "userConfig": {
+    "port": {
+      "type": "number",
+      "title": "Hub port",
+      "default": 8787,
+      "description": "The port the local HTTP hub listens on (127.0.0.1)."
+    },
+    "enabled": {
+      "type": "boolean",
+      "title": "Enabled",
+      "default": true,
+      "description": "Whether this session starts an HTTP bridge at all."
+    },
+    "timeoutMs": {
+      "type": "number",
+      "title": "Answer timeout (ms)",
+      "default": 600000,
+      "description": "How long a request waits for the session's answer."
+    }
+  }
+}
