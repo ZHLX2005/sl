@@ -338,7 +338,7 @@ skill 里的「数据快照：vX.Y.Z」跟着 bump，frontmatter `description` �
     └── A01-xxx.md
 ```
 
-- `<宿主目录>` 由载体形态决定（[[X02-产物作用域]] Step 2）：平台 skill 目录（`.claude/skills/` / `.agent/skills/` / `.workbuddy/…`）、项目自带静态 skill 资源（`assets/skills/`、`<pkg>/skills/`）、用户级目录（`~/.claude/skills/`）。**开发级 / 面向开发者的 skill 与终端用户向 skill 一视同仁。**
+- **默认落点 `.claude/skills/<skill名>/`**——用户没说别的就生成到 `.claude`。只有用户点名了别的平台（`.agent/skills/` / `.workbuddy/…`），或产物本就是随项目 / 包分发的静态资源（`assets/skills/`、`<pkg>/skills/`），才换落点（载体判定见 [[X02-产物作用域]] Step 2）。**开发级 / 面向开发者的 skill 与终端用户向 skill 一视同仁。**
 - 只有一个根 SKILL.md，不建第二个根级 md。
 - SKILL.md 零场景级内容——具体步骤、示例、判定细节、错误案例正文全在 ref。
 - references/ 一律序列命名（§1.1），从第一篇起就编号。
@@ -379,7 +379,7 @@ skill 里的「数据快照：vX.Y.Z」跟着 bump，frontmatter `description` �
 1. **依赖校验**（4.2）——失败即终止。
 2. **反思**：复盘（`sc:reflect` 或手动）——成功案例与根因、错误案例与根因、坑点与预防。
 3. **Capture Intent**：这个 skill 解决什么问题？什么时候触发？输出格式是什么？
-4. **建目录**：`mkdir -p <宿主目录>/<skill名称>/`（宿主目录按载体形态定，见 [[X02-产物作用域]] Step 2）
+4. **建目录**：`mkdir -p .claude/skills/<skill名称>/`（默认；换落点须用户点名或产物自带分发形态，见 [[X02-产物作用域]] Step 2）
 5. **写 SKILL.md（ref-map）**：frontmatter（name / description）+ 路由表 + 序列总览 + 原则 + 检查清单。场景内容不写在这里。
 6. **建 ref 树**：把场景拆成独立 ref，按 §1.1 命名（`A01-…` 起），路由表逐条登记"何时读取"。
 7. **校验**：走 §5 清单。
