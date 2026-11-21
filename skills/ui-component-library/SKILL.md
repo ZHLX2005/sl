@@ -64,4 +64,4 @@ description: |
 
 ## 关联 Skill（工具链）
 
-- `key_board` — Skill 生命周期管理器（合并 / 拆分 / 沉淀为 reference 的标准流程）
+- `key-board` — Skill 生命周期管理器（合并 / 拆分 / 沉淀为 reference 的标准流程）

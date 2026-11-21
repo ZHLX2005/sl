@@ -1,16 +1,46 @@
 ---
 name: server-cli-web-scaffold
-description: 快速初始化标准 server-cli-web 结构的项目——serve 驱动 CLI 与 Web 面板、CLI 与 API 同源、随包分发可安装 skill、带状态存储与 GitHub Actions 发版。当用户要求"新建一个 xxx 管理工具/面板"、"起一个 cli+web 项目"、"按脚手架模式建项目"、"搭一个带 web 面板的命令行工具"、"给我做个本机 xxx 管理器"，或需要给已有项目补齐 Web 面板、skill install / skill get / skill groups / skill list 命令、状态存储、发版流水线时使用。触发词：脚手架、建项目、起个项目、server-cli-web、带面板的 CLI、管理面板、npx 工具、初始化项目。
+description: TypeScript 本地工具脚手架：zod 契约经代码生成产出 CLI、HTTP 与前端 typed client，前后端分离；存储可选 JSON 前期或 SQLite。Use when 建带面板的 CLI、起 cli+web 项目、补 Web 面板、skill install。
+version: 2.0.1
+metadata:
+  author: zhlx <zhlx@localhost>
+  tags:
+    - scaffold
+    - typescript
+    - storage
+    - codegen
+    - cli
 ---
-# server-cli-web 脚手架
+
+# server-cli-web 脚手架（TS 版）
 
 给"本机工具类项目"的标准骨架：**serve 驱动 CLI 与 Web，CLI 与 API 同源，skill 驱动 agent**。
+当前版本按 `nx-kv` 与 `nx-sk` 两套真实落地收敛。两条口径先钉死：
+
+1. **语言一律 TypeScript**：不写 JS 写法（不上 `.js` 源码、不用无类型的对象字面量 action）。
+   存量 JS 项目按 [[A10-ts-action-pipeline]] 第六节增量迁移。
+2. **存储是两档选择，不是新旧代差**：前期用 JSON 单文件（简单、可手工修、零依赖）；
+   数据量 / 并发 / 关系查询上来后升级 SQLite（迁移、事务、乐观并发）。两档都用 TS 实现，
+   判档与升级信号见 [[A05-state-storage]]。
 
 本骨架已在多个真实项目上完整落地并持续验证——宁可照抄规范，不要即兴发挥。
 各 ref 的案例取自这些真实落地（**引用具体实现时以那一篇 ref 的说法为准**）。
 
 > 写规范时若引用某个实现的路径/命令，**先确认那是该实现真实存在的**——
 > 把 A 项目的路径写到 B 项目的案例里，读者照着去找不到，规范就失去可信度。
+
+## Purpose
+
+把「一个本机工具」拆成三个互不粘连的部分：**后端 action 层**（TS 类 + zod 契约）、
+**前端壳**（独立 `src/web/frontend`，只消费生成的 typed client）、**数据层**（TS 存储层：
+前期 JSON、后期 SQLite，**对上层保持同一个仓储接口**）。
+目标是：加一个功能只改一处声明，CLI / HTTP / 面板 / agent 四个入口同时得到，且类型在编译期就对齐。
+
+## Prerequisites
+
+- Node ≥ 20（JSON 档足够）；**选 SQLite 档时 Node ≥ 22**（需要 `node:sqlite`）。
+- pnpm、TypeScript 5.x、zod；无网络依赖、无 API key，`pnpm test` 全本地跑。
+- 目标目录可写；`~/.<主题名>/` 用于放 `store.json` 或 `<名>.db` 与备份。
 
 ## 什么时候用
 
@@ -24,38 +54,61 @@ description: 快速初始化标准 server-cli-web 结构的项目——serve 驱
 
 这三条决定了所有后续设计。**先理解，再动手。**
 
-### 1. 一条 action 定义，三端同时暴露
+### 1. 一条 action 声明，四端同时得到（TS + zod + 代码生成）
 
-不要在 CLI 里写一份命令表、在 API 里再写一份路由表——那就是两份会分叉的清单。
-每个功能域声明一组 action，**每条同时声明 CLI 路径与 HTTP 路由**：
+不要在 CLI 写一份命令表、在 API 再写一份路由表、在前端手抄一份请求函数——那是三份会分叉的清单。
+新项目的 action 是**一个 TS 类 + 一个 zod schema**，用装饰器声明 CLI 路径与 HTTP 路由：
 
-```js
-{
+```ts
+// src/modules/repo/actions/add.ts
+@action({
   id: 'repo.add',
-  cli: ['repo', 'add'],           // → xxx repo add <path>
-  http: ['POST', '/api/repos'],   // → POST /api/repos
-  summary: '登记一个仓库',         // → 自动进入 help
-  args: ['path'],
-  flags: { name: { type: 'string' } },
-  run: (ctx) => service.addRepo(ctx),
-  render: (r) => `已登记: ${r.name}`,   // CLI 人读模式；--json 走序列化
+  cli: ['repo', 'add'],          // → xxx repo add <path>
+  http: ['POST', '/api/repos'],  // → POST /api/repos
+  summary: '登记一个仓库',
+  input: AddRepoInput,           // zod schema：CLI 与 HTTP 共用的唯一契约
+})
+export class AddRepoAction extends ActionBase<typeof AddRepoInput> {
+  async run(ctx: ActionInput<this['_input']>) { return this.ctx.repo.add(ctx.input); }
 }
 ```
 
-CLI 命令表、HTTP 路由表、`help` 文本全部由此派生。
-**"Web 上能做的，CLI 都必须能做"** 由结构保证，不靠人记。
+三个生成物由脚本产出、并被测试钉住新鲜度：
 
-### 2. 依赖只能向下：`core ← modules ← runtime`
+| 生成物 | 脚本 | 谁消费 |
+| --- | --- | --- |
+| `actions/_manifest.generated.ts`（模块内 action 清单） | `scripts/gen-actions.mjs` | 模块装配（静态 import，可类型检查、可打包） |
+| `src/web/frontend/api/client.generated.ts`（typed client） | `scripts/gen-api-client.mjs` | 前端；入参/出参类型从 action 类推导，**不手写第二份类型** |
+| `contract/contract.json` + Dart client（可选） | `scripts/gen-actions` / `gen:dart` | 跨语言端；跨语言 action 额外声明 `output` 视图 |
+
+**"Web 上能做的，CLI 都必须能做，agent 也都能调"** 由结构保证，不靠人记。
+细节（装饰器元数据为什么要挂函数、`z.input` 与 `z.output` 怎么分、出参为什么默认没有 schema）
+见 [[A10-ts-action-pipeline]]。
+
+### 2. 依赖只能向下，前后端彻底分离
 
 ```
-core/       零业务语义的基础设施（常量、存储、错误、文件、算法）
-modules/    功能域，每个自包含：index.js(声明) + service.js(业务) + view.jsx(面板)
-runtime/    装配层：把 action 表编译成 CLI 命令表与 HTTP 路由表，不写业务
-web/        React 壳，只 import 各模块的 view.jsx
+后端（Node，可被 CLI 与 server 复用）
+core/       零业务语义基础设施（paths / errors / db / 原子写）
+modules/    功能域：index.ts(声明) + service.ts(业务) + actions/*.ts，**不含任何视图**
+runtime/    装配层：action 表 → CLI 命令表 + HTTP 路由表，不写业务
+shared/     前后端共用的纯类型与纯函数（无 node: 依赖）
+
+前端（浏览器，Vite 独立构建）
+web/frontend/   React 壳：pages/ 一页一个目录、app/ 路由与壳、api/client.generated.ts
+                **只 import shared/ 与生成的 client；禁止 import modules/ 与 runtime/**
 ```
 
-跨模块要共享的东西**一律下沉到 core**，不允许模块之间互相 import。
-这条必须用 lint 强制，否则三次提交之后就没人记得了。
+三条边界必须用 lint 钉住（只写文档三次提交后就失效）：
+
+1. `modules/**` 不得互相 import（枚举式禁列，新增模块必须手动补列——漏补是静默的）。
+2. `web/frontend/**` 不得 import `modules/**`、`runtime/**`、任何 `node:` 内置模块。
+3. 视图不再放在 `modules/<域>/view.jsx`：面板页面在 `web/frontend/pages/<页>/`，
+   后端只通过 HTTP/typed client 与之交互。
+
+为什么这条值得单独一条不变量：视图混在模块里时，"改个后端字段"会顺手改前端，
+两个构建产物（Node 包与浏览器包）的边界就消失了——最终表现为 Vite 把 `node:` 打进浏览器包，
+或者前端直接读到后端内部对象。**彻底分离后，前端只有一个入口：生成的 client。**
 
 ### 3. 失败抛异常，业务结果返回 `{ status }`
 
@@ -69,19 +122,19 @@ web/        React 壳，只 import 各模块的 view.jsx
 冲突**不是错误**——界面要拿它弹窗让用户决策，所以不能抛。这个边界想不清楚，
 上层就只能靠字符串匹配猜，agent 也没法可靠分支。
 
-详细展开见 [[A00-design-and-verify]]。
+详细展开见 [[A00-design-and-verify]]；TS 侧的异常与 zod 校验分工见 [[A10-ts-action-pipeline]]。
 
-## 创建流程
+## Instructions：创建流程（7 阶段）
 
 按顺序做，每阶段做完能跑再进下一阶段。**不要一次性铺完再调**。
 
 | 阶段                        | 做什么                                                                                | 详读 |
 | --------------------------- | ------------------------------------------------------------------------------------- | ---- |
-| 1. 定骨架                   | 目录结构、`bin/` 唯一入口、`core/` 三件套（paths/store/errors）                   | [[A01-bootstrap-serve-first]]     |
+| 1. 定骨架                   | TS 工程（tsconfig node/web 双份）、`bin/` 唯一入口、`core/` 三件套（paths / errors / db） | [[A01-bootstrap-serve-first]]     |
 | 2. 起 serve                 | `xxx serve` 能起一个只服务静态页的空壳面板                                          | [[A01-bootstrap-serve-first]]     |
-| 3. 立 action 机制           | registry + spec + 通用 CLI 运行器 + 路由装配                                          | [[A00-design-and-verify]]     |
-| 4. 写第一个功能域           | 一个真实的 modules/&lt;域&gt;，端到端跑通 CLI + API + 面板                            | [[A02-web-panel]] · [[A03-cli-surface]] |
-| 5. 接状态                   | `~/&lt;主题名&gt;/store.json`，原子写 + 环境变量覆盖                                | [[A05-state-storage]]     |
+| 3. 立 action 机制           | `ActionBase` + `@action` 装饰器 + registry + 生成器（gen-actions / gen-api-client）  | [[A10-ts-action-pipeline]] |
+| 4. 写第一个功能域           | 一个真实 `modules/<域>`：service + actions，端到端跑通 CLI + HTTP + 前端页面         | [[A02-web-panel]] · [[A03-cli-surface]] · [[A11-frontend-split]] |
+| 5. 接状态                   | **先选档**：前期 JSON（`~/<主题名>/store.json`，TS 类 + 原子写 + rev），数据/并发上来再升 SQLite（`<名>.db`：驱动 + 迁移 + 事务 + 乐观并发）；两档共用同一仓储接口 | [[A05-state-storage]]     |
 | 6. 上发布                   | GitHub Actions，tag 幂等 + npm provenance                                             | [[A06-release-actions]]     |
 | 7. 接 agent（贯穿所有阶段） | 阶段 1 起 SKILL.md + references/00-思想文档.md 同时落地；每加一个功能域同步补场景 ref | [[A04-assert-skill]]     |
 
@@ -97,33 +150,40 @@ web/        React 壳，只 import 各模块的 view.jsx
 
 ref 分两个序列：
 
-- **A 序列（A00–A09）**：脚手架完整流程 + 项目整体规范——初始化按创建流程顺序执行，规范类（A00/A07/A08/A09）按场景随时读。
+- **A 序列（A00–A11）**：脚手架完整流程 + 项目整体规范——初始化按创建流程顺序执行，规范类（A00/A07/A08/A09/A10/A11）按场景随时读。A10/A11 是**TS 版新增的两条地基**（类型链路、前后端分离），新项目必读。
 ---
-- **B 序列（B01–B05）**：**三类重操作**——B01/B02 是调试与开发环境优化的重量级操作（不接入创建流程），B03 是**特殊化处理方案**（具象参考实现的设计模式速查，先读对应 A 序列 ref 才能看懂）。B04/B05 是**扩展方案**而非重操作（B04=多 skill 编排、B05=多行 CLI 输入/heredoc）——放 B 组是按 key_board 当下 ref 编号习惯，frontmatter 已说明命名/定性差异。均按需加载，不接入创建流程。
+- **B 序列（B01–B06）**：**三类重操作**——B01/B02 是调试与开发环境优化的重量级操作（不接入创建流程），B03 是**特殊化处理方案**（具象参考实现的设计模式速查，先读对应 A 序列 ref 才能看懂）。B04/B05 是**扩展方案**而非重操作（B04=多 skill 编排、B05=多行 CLI 输入/heredoc）；B06 是**操作记录**（按日期追加，不进主文档）——放 B 组是按 key-board 当下 ref 编号习惯，frontmatter 已说明命名/定性差异。均按需加载，不接入创建流程。
 
 | ref | 何时读取                                                                                                                                                                                                                                                             |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [[A00-design-and-verify]]    | **立 action 机制时必读**——尤其第三节的 ctx 契约（CLI 参数与 HTTP 路由怎么合并成同一个 ctx，漏了会静默出错）。第七节讲 CRUD 完备性：一个模块该不该是 CRUD、五个操作各自的语义陷阱、以及怎么用断言钉住。其余讲项目自检：用 lint + 测试把依赖图和三端一致性钉死 |
+| [[A00-design-and-verify]]    | **立 action 机制时必读**（存量 JS 写法）——第三节 ctx 契约、第七节 CRUD 完备性、lint + 测试钉依赖图。**新项目先读 [[A10-ts-action-pipeline]]**，A00 里"对象字面量 + flags"的写法仅用于阅读老项目 |
 | [[A01-bootstrap-serve-first]]    | 定工程骨架时；`serve` 到底该驱动什么、dev/prod 两种模式怎么分                                                                                                                                                                                                      |
-| [[A02-web-panel]]    | **写 / 改面板与视图时必读**——面板规范（视觉规范、状态持久化、点击复制、错误边界）与 Web 端完整要求：三条核心不变量（单色 / 状态标签 / 立体感边界）、密度双层（行 28px · 按钮 32px · 字号 12px）、分隔规则（1px 浅底线，主体完全连续）、弹窗 / 复制 / 错误边界 / 视图注册表，以及反 AI-default 自检 |
+| [[A02-web-panel]]    | **写 / 改面板与视图时必读**——面板视觉规范（单色 / 状态标签 / 立体感边界、行 28px · 按钮 32px · 字号 12px）、弹窗 / 复制 / 错误边界；**视图落点已改到 `web/frontend/pages/`，见 [[A11-frontend-split]]** |
 | [[A03-cli-surface]]    | 定 CLI 对外契约时：`serve` / `skill install` / `skill get` 参数、`--json` 格式、三段拼接输出                                                                                                                                                                 |
-| [[A04-assert-skill]]    | **初始化时必读**——`SKILL.md` + `references/00-思想文档.md` 的最小骨架、为什么要"先 skill 后代码"、**`assets/` 与项目文档的分工**（哪些知识该发给用户、哪些只属于仓库开发者——写错一步就会把开发手册发到用户机器上）、触发词自检 4 条、错误案例                                                                                                                              |
-| [[A05-state-storage]]    | 定存储时：放哪、怎么写不坏、怎么让测试不污染用户目录                                                                                                                                                                                                                 |
-| [[A06-release-actions]]    | **配发版流水线 / 首次建包发布 / 发版排错时**：npm 已限制令牌直发（`E_STAGE_REQUIRED`）——**Trusted Publishing（OIDC 零 token）为主线**：`npm trust github` 配一次信任关系，CI 全自动直发；含首次建包 bootstrap（信任关系只能配「已存在的包」→ 新包先本地 login 首发）、`gh repo create`（默认公开）、幂等 + tag、`gh run watch --exit-status` 盯流水线、staged 通道兜底与完整排错对照表 |
-| [[A07-extension-loop]]    | **每次新增/修改一个功能域时必读**——闭环落点表（12 处，逐个标注「漏了会怎样、谁会发现」）、三处**没有任何断言**的静默失效点（`src/index.js` 导出 / eslint 互依禁列 / `assets/` 文档单向漂移）、以及怎么验证闸门本身真的会触发                       |
-| [[A08-framework-runtime]]    | **dev 模式 / 日常跑项目时必读**——为什么是 vite + serve 两个进程而非一条命令、`pnpm run dev` 启动器、Node 18+ IPv6 / `--host 127.0.0.1`、跨平台 spawn 坑（npm.cmd / Git Bash / cwd 校准）                                                                 |
-| [[A09-template-generator]]    | **把项目沉淀为可重用模板时必读**——`templates/<id>/template.json` schema、`hooks.mjs` 三钩子契约（options / beforeGenerate / afterGenerate）、文本 vs 二进制分发（扩展名白名单）、防穿越（路径段 `..` / `.` / 盘符三道闸）、dry-run 与生成共用 `walkTemplate`、严格 vs 宽松双契约渲染、openFlags 开放选项、坏模板不吞也不中断、`generate.js` **永远不认识「图片」**——二进制产物由模板钩子产出 |
+| [[A04-assert-skill]]    | **初始化时必读**——`SKILL.md` + `references/00-思想文档.md` 的最小骨架、为什么要"先 skill 后代码"、**`assets/` 与项目文档的分工**、触发词自检 4 条、错误案例                                                                                                                              |
+| [[A05-state-storage]]    | **定存储时必读（两档选择）**——JSON 档（TS 类型 + 原子写 + mtime 失效 + rev 乐观并发、零依赖）与 SQLite 档（`node:sqlite` 唯一引用点、`user_version` 迁移链、每步一事务、`VACUUM INTO` 备份、`meta.rev`）；含「何时从 JSON 升 SQLite」的判据、`store.json` 只导入一次、连接级 PRAGMA 陷阱 |
+| [[A06-release-actions]]    | **配发版流水线 / 首次建包发布 / 发版排错时**：Trusted Publishing（OIDC 零 token）为主线；含首次建包 bootstrap、`gh repo create`、幂等 + tag、`gh run watch --exit-status`、staged 兜底 |
+| [[A07-extension-loop]]    | **每次新增/修改一个功能域时必读**——闭环落点表、三处**没有任何断言**的静默失效点、以及怎么验证闸门本身真的会触发 |
+| [[A08-framework-runtime]]    | **dev 模式 / 日常跑项目时必读**——vite + serve 两个进程、`pnpm run dev`、Node 18+ IPv6 / `--host 127.0.0.1`、跨平台 spawn 坑 |
+| [[A09-template-generator]]    | **把项目沉淀为可重用模板时必读**——`template.json` schema、`hooks.mjs` 三钩子、文本 vs 二进制分发、防穿越三道闸、dry-run 与生成共用 `walkTemplate` |
+| [[A10-ts-action-pipeline]]    | **新项目立 action / 加 action / 改契约时必读**——TS 类 + `@action` 装饰器 + zod 单一契约、`gen-actions` 与 `gen-api-client` 的产物与新鲜度测试、typed client 的类型从哪来、`z.input` vs `z.output`、出参"实现即契约"与跨语言 `output` 视图 |
+| [[A11-frontend-split]]    | **动前端 / 加页面 / 排查"node 模块进了浏览器包"时必读**——`src/web/frontend` 独立壳、pages 目录约定、前端只能 import shared + generated client、三条 lint 边界、以及"前后端同源"到底同源在哪（契约，不是代码） |
 | [[B01-browser-debugging]]    | **重量级排查，不接入创建流程**——当 Web 端问题反复出现、curl 正常但页面不对、或需要验证前后端连通性时才升级到这里：browser-harness 连 CDP 端点的 SOP（截图 / fetch 验证 / 注入 JS 模拟点击并观察按钮有效性 / 现象→层定位表）                                 |
 | [[B02-link-local-shim]]    | **重量级环境操作，不接入创建流程**——要让全局 `xxx` 命令实时指向本仓库（改码即生效）时：为什么覆盖式 shim 而非 npm link / volta install、RECEIPT 备份清单与重装保护、兜底落点与 PATH 写入的防御性细节、`--auto` 模式（CI 安全）、unlink 还原与真实事故时间线                                 |
 | [[B03-cwd-scope-registry]]    | **特殊化处理方案，不接入创建流程**——以真实落地项目为具象参考，看 A 序列规范在真实项目里「长什么样」：单一入口 + dev/prod 同入口、注册分组 + 一源三派生 + 装载期断言、cwd 作用域 + ALS + **跨项目面板（含最近目录下拉的交互与 CSS：受控下拉 / 点击外部收回 / 行内 hover 删按钮）**、视图注册表驱动壳；**先读对应 A 序列 ref 才能看懂**（对照表见 ref 第六节）                                                                              |
 | [[B04-multi-skill]]    | **skill 子命令扩展方案**——`skill install [name]\|--group <name>\|--to <dir>\|--force`、`skill list` 输出形态、`groups.json` schema 与降级策略（缺失/损坏时目录扫描兜底）、默认 install 与主 skill 同名约定；面向**给已有项目加多种 skill**时的扩展口径（不是创建决策，命名/定性差异见 ref 自身 frontmatter）                                                                                                                                         |
-| [[B05-multi-line-cli-input]]    | **多行 CLI 输入的 heredoc 处理方案**——多行参数跨 exec 边界被切的平台根因（实测 argv 9→5）、`-` 占位从 stdin 读的实现要点、AI 写 heredoc 的四种实测错误（定界符引号 / flag 位置 / EOF 缩进 / 漏 `-`）、spawnSync 隔离测试技巧；面向**给命令加多行文本参数**（任务描述 / 长规范 / prompt）时的扩展口径                                                                                                                                         |
+| [[B05-multi-line-cli-input]]    | **多行 CLI 输入的 heredoc 处理方案**——多行参数跨 exec 边界被切的平台根因（实测 argv 9→5）、`-` 占位从 stdin 读的实现要点、AI 写 heredoc 的四种实测错误（定界符引号 / flag 位置 / EOF 缩进 / 漏 `-`）、spawnSync 隔离测试技巧 |
+| [[B06-操作记录]]    | 查历史教训 / 追某条规范为什么变成现在这样时；每条记录带 `YYYY-MM-DD｜触发时机`，超过 12 个月未复核的按 [[M01-质检]] 判龄 |
 
 ## 验收清单
 
 零知识开工前对照，交付前逐条确认：
 
 - [ ] `bin/<name>.mjs` 是唯一可执行入口，其余全是模块
+- [ ] **TS 工程是双 tsconfig**（node / web 各一份），`pnpm typecheck` 两端都过；`pnpm test` 链里含 `gen`
+- [ ] **action 是 TS 类 + zod**：`@action({id, cli, http, summary, input})`；`actions/_manifest.generated.ts` 由 `gen-actions` 产出、有新鲜度对账测试
+- [ ] **前端 typed client 是生成物**：`web/frontend/api/client.generated.ts` 由 `gen-api-client` 产出；改了 action 契约但没重跑生成 → 测试红
+- [ ] **前后端彻底分离**：`web/frontend/**` 不 import `modules/**` / `runtime/**` / `node:*`；页面在 `pages/<页>/`，后端模块目录里没有任何视图文件
 - [ ] `pnpm start` 能一条命令起面板；`serve` 支持 `--port` 与 `--no-open`
 - [ ] `serve` 端口被占时走 reuse/shift 两分支：占用者是自己的面板 → 复用并**开浏览器**；占用者是别人 → 换端口起自己的面板再开浏览器
 - [ ] 跨项目统一的关闭开关 `NX_SERVE_NO_OPEN=1` 生效（`--no-open` 仍只管这一次）；bootstrap 响应带 `app.name`
@@ -133,8 +193,12 @@ ref 分两个序列：
 - [ ] 每个 Web 操作都有等价 CLI 命令，且有测试断言这条等价性
 - [ ] 管理实体集合的模块声明了 `resource`，**CRUD 五操作齐备且两端都可调用**（见 [[A00-design-and-verify]] 第七节）
 - [ ] 非集合模块（配置 / 动作集合 / 外部连接器 / 聚合）**没有**被硬套成 CRUD，但仍满足两端可达
-- [ ] 状态存 `~/<主题名>/`，可用环境变量覆盖（否则测试会写脏用户目录）
-- [ ] 分层规则由 lint 强制，不是写在文档里的君子协定
+- [ ] **存储档位已声明**：JSON（前期）或 SQLite（升级）；两档都是 TS 实现，上层走同一仓储接口
+- [ ] **JSON 档**：`StoreState` 有 TS 接口、写入用「临时文件 + rename」原子写、按 mtime 失效缓存、`mutateStore` 深拷贝、有 `rev` 乐观并发
+- [ ] **SQLite 档**：`node:sqlite` 只在 `core/db/driver.ts` 一处出现；`PRAGMA user_version` 驱动迁移、每步一个事务、升级前 `VACUUM INTO` 备份
+- [ ] **SQLite 档写路径走事务 + 乐观并发**（`meta.rev` 不匹配抛 `BLOCKED`）；从 JSON 升级时 `store.json` 只导入一次并改名
+- [ ] 存储路径 `~/<主题名>/<名>.db` 可用环境变量覆盖（否则测试写脏用户目录）
+- [ ] 分层规则由 lint 强制，不是写在文档里的君子协定（三条边界都要有反向测试：临时写违例 → 退出码非 0）
 - [ ] GitHub Actions 能在 push 后发版：首选 **Trusted Publishing**（OIDC 零 token；npm 侧用 `npm trust github --file <workflow> --repo <o/r> --allow-publish` 配一次；新包先按 [[A06-release-actions]] 第一节 bootstrap 首发）；缺配置时**把 npm 侧待办直给用户**而不是静默失败
 - [ ] 远端仓库由 `gh repo create` 建好（默认公开，且**执行前已告知用户**）
 - [ ] push 之后用 `gh run watch --exit-status` 确认流水线真的成功，不留"发出去了吗"的悬念
@@ -142,10 +206,19 @@ ref 分两个序列：
 **每次新增 / 修改一个功能域时**，按 [[A07-extension-loop]] 第六节的闭环清单逐条过。
 其中下面三处**没有任何断言会替你发现**，是最容易漏的：
 
-- [ ] `src/index.js` 已导出新 service
+- [ ] `src/index.ts` 已导出新 service
 - [ ] `eslint.config.js` 互依禁列已加 `../<新模块>/*`（枚举式，漏补静默）
 - [ ] `assets/<skill>/` 已补新场景（**文档→代码有断言，代码→文档没有**），且只写「怎么用」——
       「怎么改这个项目」属于项目仓库（`README.md`），不属于随包分发的手册
+
+## Examples
+
+| 用户说 | 走哪条路 | 关键产物 |
+| --- | --- | --- |
+| 「给我做个本机 xxx 管理器，要能在浏览器里点」 | 阶段 1→5，先空壳 serve，再第一个功能域 | `bin/<name>.mjs`、`modules/<域>/actions/*.ts`、`pages/<页>/` |
+| 「这个老项目（JS + store.json）迁移」 | [[A10-ts-action-pipeline]] 第六节的 5 步增量迁移 + [[A05-state-storage]] 的 JSON 档 | 源码转 TS，JSON 存储保留为前期档；需要关系查询再升 SQLite |
+| 「面板要加一页」 | [[A11-frontend-split]] 第四节 | `routes/<页>.ts` + `pages/<页>/index.tsx`，不改全局登记 |
+| 「CLI 要能装 skill 给 agent 用」 | [[A04-assert-skill]] + [[A03-cli-surface]] | `skill install` / `skill get`，`assets/<skill>/` |
 
 ## 错误案例
 
@@ -158,7 +231,11 @@ ref 分两个序列：
 | 面板与 CLI 传参形态不同（CLI 用`--off`、面板传 `enabled:false`） | 同一语义两条调用路径，只测了一条 → 另一条静默失效                                                                       | 两条入口必须有**对照测试**断言走同一分支                    |
 | 声明了`args:['ref']` 却没检查它与 `http` 的 `:ref` 同名        | 参数静默变成`undefined` 传进 service（无 body 的 DELETE 尤其容易中招）                                                 | 写完一条 action 就对照名字，见[[A00-design-and-verify]] 的 ctx 契约表                      |
 | 用「目录名」的校验规则去卡文件路径                                   | 拒绝`.gitignore` 这类正常文件                                                                                          | 名称与路径分开校验；路径允许前导点                                |
-| 直接把 node 侧代码 import 进视图                                     | Vite 把`node:` 内置模块打进浏览器包                                                                                    | 前端只能 import 各模块的`view.jsx`，用 lint 拦住                |
+| 直接把 node 侧代码 import 进前端                                     | Vite 把`node:` 内置模块打进浏览器包                                                                                    | 前端只 import `shared/` 与 `api/client.generated.ts`，三条边界用 lint 拦住（见 [[A11-frontend-split]]） |
+| 改了 action 契约却没重跑生成                                         | `client.generated.ts` 与后端签名漂移；类型检查发现不了（生成物里是旧类型），运行时才 404/参数错                     | `pnpm test` 链里含 `gen` + 新鲜度对账测试；提交前必须 `pnpm gen` |
+| 没有主键就谈"乐观并发"                                               | JSON 档整份覆盖：两个进程各自读旧值再写，后写的静默抹掉先写的（经典 lost-update）；SQLite 档无主键则连冲突都检测不到 | JSON 档也用 `rev` 计数（载入记 rev，提交不匹配抛 `BLOCKED`）；SQLite 档读 `meta.rev`，不匹配抛 `BLOCKED`（见 [[A05-state-storage]]） |
+| 数据量还没上来就上 SQLite                                             | 前期项目被迫写迁移链、备份、PRAGMA，维护成本压过收益 | 先 JSON（几百条记录足够），出现「关系查询 / 多写者 / 历史审计」信号再升 SQLite（见 [[A05-state-storage]] 判档表） |
+| 用 JS 写存储层                                                       | 结构靠约定不靠类型，字段改名全仓库静默漏 | 存储层一律 TS：`StoreState` 接口 + 仓储接口，JSON 与 SQLite 实现同一个接口 |
 | 新模块忘补 eslint 的互依禁列                                         | **静默**：新模块变成「谁都可以依赖」，而那条禁列是逐模块枚举的，规则随模块数增加持续衰减                           | 把「加模块必补禁列」写进[[A07-extension-loop]] 的闭环表；禁列旁留注释说明漏补是静默的   |
 | 读命令的 flag 照抄写命令的`default`                                | 参数层无条件注入默认值，「不传 = 全部」的分支**永远走不到**——不报错、不崩，只是永远返回半个结果                  | 写命令的 flag 可带`default`，读命令的过滤 flag 一律不带         |
 | 加了命令但没写进`assets/<skill>/`                                  | **单向断言**只保证「文档提到的命令一定存在」，反方向不强制 → 漏写没有任何测试会红，而 agent 侧该命令等于不存在    | 更新`assets/` 是闭环的**必做项**，不是「有空再补」        |
@@ -167,139 +244,28 @@ ref 分两个序列：
 | `serve` 端口被占就抛「请换一个端口」                                | 用户多半**自己已经开着一个**——既看不到它也拿不到地址，还要自己猜端口                     | 探测占用者：是自己就复用并**开浏览器**；是别人才换端口（见 [[A01-bootstrap-serve-first]]） |
 | 关闭开关写成 `NX_<项目>_NO_OPEN`                                    | 一个变量关不掉全部项目，「全项目统一关闭」名存实亡                                          | 固定 `NX_SERVE_NO_OPEN`，所有项目同一个名字                   |
 
-_最后更新：2026-10-13_
+_最后更新：2026-11-19_
 
-## 操作记录（key_board_3）
+## Limitations
 
-### 2026-09-29 · 新增 [[B03-cwd-scope-registry]]（参考实现项目 具象设计模式速查 + B 序列重构为两类）
+- 只面向**单机单用户**工具；不做多租户、鉴权、远程部署（需要这些请换 server 框架）。
+- **JSON 档没有事务与多写者保证**：只有原子写 + `rev` 乐观并发；两个以上写进程频繁冲突时该升 SQLite。
+- SQLite 走 `node:sqlite`（Node ≥ 22 内置，仍标 experimental）：升级 Node 时先跑 `pnpm test:db`，
+  驱动差异只在 `core/db/driver.ts` 一处需要适配。
+- 代码生成覆盖的是「契约 → 客户端方法」，**不覆盖页面接线**：哪个按钮调哪个 action 仍需手写。
+- 前端壳是 React + Vite，不提供 SSR；面板只在 `127.0.0.1` 本机使用。
+- 本 skill 只管项目骨架与工程规范，不负责业务语义设计，也不做效果评测（评测走 SkillEvaluator）。
 
-| 错误操作 | 实际后果 | 正确做法 |
+## Troubleshooting
+
+| 症状 | 大概率原因 | 处置 |
 | --- | --- | --- |
-| 把 参考实现项目 总结直接落 B03 但不改 B 序列说明 | 路由表会写「重量级操作、不接入创建流程」——这是 B01/B02 的特征，而 参考实现项目 总结是**抽象规范的具体形态**，不是「重量级调试」；下次读 ref 的人按重量级排查路径去找 B03，发现场景对不上 | B 序列拆成两类：B01/B02 仍是「重量级调试与开发环境优化」、B03 是「**特殊化处理方案**」（具象参考实现的设计模式速查）；路由表加一行时**同步改 B 序列范围说明**，并在 B03 路由行写明「先读对应 A 序列 ref 才能看懂」 |
-| 用「nx-rx」笔误写入文件头 | 主标题里的项目名前缀若错，读者第一时间会觉得不是主文档里说的那个参考实现（主文档路由表写的是 `骨架原型项目`，对应 参考实现项目/...)；后续 grep "nx-rx" 找不到任何代码 | 文件名用 `参考实现项目` 与主文档参考实现段一致；落盘前自查「项目名前缀是否与 SKILL.md `## 核心不变量` 提到的 `骨架原型项目` 同一物」 |
-| 只在 ref 内写 A 序列对照表，主文档侧没标「先读 A 再读 B03」 | 读者按主文档路由表的简短描述跳进 B03，看完不知道哪些是骨架规范、哪些是 参考实现项目 的特定设计 | ref 顶部用 `# 归属引言` 写明「先读 A 序列对应 ref」；第六节列「A 序列对照表」；路由表行写「对照表见 ref 第六节」；不在 B03 内重写 A 序列规范 |
-| — | — | 角色分离检查：B03 是**具象形态速查**，不替代 [[A00]] / [[A01]] / [[A05]] / [[A07]]；用错时落入「错误案例」第七节的三条典型踩坑 |
+| `pnpm typecheck` 报「找不到 _manifest」 | 新模块只建了 `actions/*.ts`，没跑 `pnpm gen` | 跑 `pnpm gen`，并把生成物提交 |
+| 前端调用 404 / 参数名对不上 | `client.generated.ts` 是旧的 | 重跑 `gen-api-client`；看 `cli-tree.json` 里该 action 的路由 |
+| 启动即崩、报 `SQLITE_BUSY` | 多进程同时写、没设 `busy_timeout` | 连接级 PRAGMA 一次设好；写路径包 `tx()` |
+| 升级后读不出旧数据 | 迁移没跑或 `user_version` 不对 | 看 `core/db/version.ts` 与 `migrations/index.ts` 的步骤表；升级前先 `VACUUM INTO` 备份 |
+| 浏览器包体积异常、build 报 `node:` 无法解析 | 前端 import 了后端模块 | 按 [[A11-frontend-split]] 的边界排查，lint 反向测试确认规则生效 |
 
-### 2026-09-29 · 主文档承认 参考实现项目 一族参考实现（B03 落位后暴露的知识边界）
+## 操作记录
 
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 主文档只写「参考实现：`骨架原型项目`」，但 B02 引用 `参考实现项目`、[[A04-assert-skill]] 引用 `落地项目一`、[[A09-template-generator]] 引用 `落地项目二`——**这些名字主文档从未承认过** | 读者（含 AI）读到 B03 顶部的 `参考实现项目` 时无法判断：这是笔误？是另一个没被记录的实现？还是 骨架原型项目 的别名？规范的可信度建立不上去——每个 ref 各自引用一个「幽灵实现」 | 主文档「参考实现」段从单条改为**一张表**：`骨架原型项目`（原型）+ `参考实现项目` / `落地项目一` / `落地项目二`（各 ref 的案例来源）+ 各自主要出现在哪几篇 ref；并加一句「引用某个实现时先确认该路径真实存在」 |
-| 在 B03 里把 store 路径写成 `~/<主题名>/store.json` | 该处的规范本意就是「**以 参考实现项目 的真实路径为例**」——写成占位符后，读者无法核对（去 参考实现项目 仓库找不到 `~/<主题名>/` 这个目录），案例变成不可验证的断言 | 案例类 ref 里**写真实路径**（`~/.参考实现项目/store.json`）；「占位符形式」留给讲通用规范的 A 序列（如 [[A05-state-storage]] 用 `~/<主题名>/` 讲命名原则）——**规范用占位符、案例用实名**，两者不要混 |
-| 交付前没做「引用实现 vs 主文档声明」的对账 | 主文档说 A，ref 里写 B，谁也没错、谁也没发现——**这类不一致没有任何测试会报**（skill 目录是纯 Markdown，无断言） | 新增/修改引用实现的 ref 后，跑一次 `grep -rn 'nx-' <skill>` 把出现的实现名全列出来，逐个回主文档核对是否已被承认；未承认的先补主文档，再写 ref |
-
-### 2026-09-26 · 补「assets 与项目文档的分工」（用户侧 agent 的知识边界）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 参考实现 落地项目一 的 `assets/落地项目一/references/40-extend.md` 整篇写「加栏目模板 / 加功能域要碰的 12 处」——**这是开发规范，不是使用方法** | 该文件随 `npm publish` 发到用户机器：用户侧 agent 手上没有 `src/`，「改这个项目本身」永远不会是它的场景，但它照样被加载、被检索；而真正需要这份清单的仓库开发者在项目仓库里找不到 | `assets/` 的判据是「**用户装完包，他的 agent 在什么场景下需要它**」，不是「它重不重要」。已删除该 ref，内容归位到项目 `README.md` 指向的本地脚手架 ref（[[A07-extension-loop]]） |
-| 只在 [[A07-extension-loop]] 里补一句「文档要写怎么用」，没写进骨架级规范 | 这条边界是**每次创建项目都要做的一次判断**（阶段 7 就是要落 `assets/`），只在扩展闭环里提，初始化时依然会写错 | 分区规则写进 [[A04-assert-skill]]（骨架级，阶段 7 必读）：分工表 + 两个方向的写错 + 自检问句；主文档路由表与验收清单同步加一句 |
-| 删 ref 只删文件 | 主文档路由表、`00-design` 的交叉引用、`README.md` 的命令表与「12 处」链接、一致性断言的 `>= 5` 门限全会悬空或直接变红 | 按「引用方」逐个查：`grep -rn '<ref名>'` 覆盖 assets / README / tests / 其他 ref，再跑 `tests/unit/consistency.test.mjs` 的 ref 双向对账确认 |
-
-### 2026-09-24 · ref 编号序列化：00–08 加 A 前缀（A 序列=初始化流程，B 序列=重操作）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 只重命名文件不改正文 | `# NN ·` 主标题与文件名脱节、`[[0X-…]]` 链接全部悬空——编号语义存在**文件名、主标题、wiki 链接**三处，漏任何一处都不一致 | git mv + sed 一次替换三处；替换后跑「链接可解析 / 文件头 vs 文件名 / 遗留旧编号」三查 |
-| 路由表按文件改动顺序增长，同一 ref 出现两行（A02 既登记在创建流程场景又在视图场景各一行） | 两行描述的是同一文件的两类场景，读者以为是两个 ref | 合并为一行，描述并列两类场景；路由表保持**一个 ref 一行** |
-| 操作记录区的旧编号链接被批量替换误伤 | 历史条目（如 2026-09-17 重编号记录）写的是**当时的编号**，替换后历史原貌丢失 | 批量替换限定在 `## 操作记录` 之前的正文；历史条目保留原样，一致性检查时把操作记录区排除在「遗留旧编号」判定外 |
-| — | — | 序列化命名语义写进路由表引言：**A 序列=完整流程的脚手架初始化 + 整体项目规范，按顺序执行；B 序列=调试与开发体验优化，重量级、不接入创建流程**；后续新 ref 按序列落位（A 序列顺序扩展，B 序列追加编号） |
-
-### 2026-09-24 · 新增 [[B02-link-local-shim]]（全局命令 shim 重操作 ref）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 无 | — | B02 素材直接来自 参考实现项目（v1→v2 事故修复史）与 落地项目一（移植+收敛）两个**当日亲历**案例；沉淀时机不是事后回忆，而是操作当天趁 diff 还热——RECEIPT 收敛、孤儿清理的细节都还在手上 |
-| — | — | B 序列（重量级操作）延续用户建立的 B01 命名；顺手把 B01 文件内遗留的「# 09 ·」标题对齐为「# B01 ·」——用户重命名文件时主标题没跟着改，路由表与文件头不一致 |
-
-### 2026-09-24 · 新增 [[B01-browser-debugging]]（浏览器端到端排查重操作 ref）
-
-| 错误操作                                             | 实际后果                                                                                                                                       | 正确做法                                                                                                                                                                  |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 按[[A01-沉淀为ref]] SOP 给新 ref 写 frontmatter（name + description） | 该 skill 的 ref 惯例是**无 frontmatter**、直接 `# NN · 标题` + 归属引言——SOP 模板与目标 skill 现实惯例冲突，Edit 精确匹配失败才发现 | 沉淀前先看**目标 skill 兄弟 ref 的真实结构**，SOP 模板是默认值不是强制；目标 skill 惯例优先                                                                         |
-| —                                                   | —                                                                                                                                             | 用户明确「不接入创建流程」后未在阶段表加行，只在 ref 路由表登记一行；定位写清「重量级、升级条件满足才用」（curl → netstat → 才上浏览器），避免常规排查被引到 CDP 重操作 |
-
-### 2026-09-23 · `skill get` 升格为强制命令（与 `skill install` 平级）
-
-| 错误操作                                                                          | 实际后果                                                                                                                                                            | 正确做法                                                                                                                                                              |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 把`skill get` 当成 `skill install` 的「可选补充」放在同一节末尾               | dev 看到「补充」字样下一轮再补，跨生态推广场景直接漏                                                                                                                | 与`install` 平级列入「标准命令面」表 + 「三条最高优先级」表 + 单独硬性 SOP 条目；列名「为什么是强制」一栏写明「外部 agent 拿不到上下文」而非「补充 install 的不足」 |
-| 把`skill get` 当成 `skill install` 的「同义命令」（输出 SKILL.md + 装到目标） | 两条命令的本质区分丢失：install 让**本骨架的 agent**学得会用，get 让**外部 agent**拿全上下文；同义化后两者择一就够，跨生态场景无解                      | 必须显式列「互补能力」对照表，分别写「解决什么 / 失败时怎样」，让 dev 看到两条必须共存的理由                                                                          |
-| 给`skill get --json` 也打 prefix 文本                                           | prefix 是人类引导语，塞进`--json` 污染 agent 解析；agent 复制粘贴时把 prefix 一起带走污染下游上下文                                                               | `--json` 严格输出 `{skillName, ref, content, contentBytes, install}` 四元；prefix 只在人类模式打；前缀末尾留 sentinel 行让 agent 截取边界                         |
-| 把`skill get` 当成「ref 拆分」走 [[A01-沉淀为ref]] SOP                                           | 该动作其实是「在已有 ref 内新增一节」，不是从主文档抽主题到 ref——沉淀为 ref 会把现有`03-cli-surface.md` 一节撕出来变成独立 ref，反而失去与 install 节的并列对比 | 路由优先级：**结构优化（场景 B 扩展）> 沉淀为 ref**——本次实际是给现有 ref 增加同级章节、给主文档 ref-map 表加一行、给标准命令面表加一行；ref 文件数不变       |
-
-### 2026-09-17 · 新增 [[07-extension-loop]]（原 [[06-extension-loop]]，重编号于 [[04-assert-skill]] 插入后）
-
-| 错误操作                                                    | 实际后果                                                                                                                      | 正确做法                                                                                                                                                        |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 把「扩展闭环」当成创建流程的第 7 阶段，写进主文档的阶段表   | 主文档重新长出一块**场景级内容**——正是本 skill 自己列的「演化反模式」：主文档兼具原理与场景，此后每次扩展都会加深混乱 | 场景级内容一律下沉 ref；主文档只加**指针句 + 路由表一行**（本次放在「创建流程」表后的一句 + ref 路由表）                                                  |
-| 把「更新 assets 里的 skill」读成「只改 skill 目录内的文件」 | 这个 skill 是**项目规范**，而它的参考实现就是 骨架原型项目 本身。只改规范不改参考实现，规范示范的东西在自己的样例里不存在      | 改规范时**同时检查参考实现那一侧**：本次即在 `assets/repo-hub/` 补了 `--dry-run` 契约与「手册不穷举命令、权威命令表看 `help --json`」的自我纠偏路径 |
-| 先按散文写好 ref，再跑测试                                  | 结构断言（回链、路由表登记、章节编号连续、内容量）会一次性报一堆错，返工成本高                                                | **先读结构测试确定了约束再动笔**——本次先读了 `tests/unit/skill-docs.test.mjs` 的八条断言与 `docs-commands.test.mjs` 的命令/flag 抽取规则，一次通过  |
-
-### 2026-09-27 · 新增 [[A09-template-generator]]（从 落地项目二 反向补 generator 层 ref）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 把 落地项目二 的「模板生成器」当成 server-cli-web 自身的一部分直接铺在主文档 | 主文档「核心不变量」一节会变成「项目骨架规范 + generator 规范」两坨，主文档又长又杂——本 skill 自己的「演化反模式」 | 新建 A09 独立承载；主文档只加阶段表后的一句指针 + 路由表一行 |
-| 把 logo 生成逻辑写进 `core/generate.js`（「如果扩展名是 .png 就调 logo-gen」） | 生成器认识了「图片」概念；其他模板被迫拖一份无用依赖；通用层被模板特定能力污染 | 二进制产物走模板 `afterGenerate` 钩子；生成器只做扩展名白名单 + 文本/二进制分发，**永远不认识「图片」** |
-| 预览与实际生成用两套遍历器 | 「预览看到的文件清单」与「实际写出的」偶发不一致，事故级难复现 | 两者共用 `walkTemplate` + `generate(dryRun)`——dry-run 与实生成只差一行 `continue` |
-| `renderString` 既用于文件内容又用于元数据展示 | list 期还没 vars，所有 hint 里的 `{{name}}` 直接抛 specError，整个列表打不开 | 双契约：`renderString` 严格（文件内容）/ `renderMetaText` 宽松（hint / description / nextSteps 在 list 阶段就要展示） |
-| 「`bin/../x` 规范化后仍在目标目录内就放行」 | 字符串前缀检查挡不住编码变形；模板变量把 `..` 带进路径本身就说明输入没洗干净 | 含 `..` / `.` / 盘符的路径段一律 `badInput` 拒绝；防穿越比对**解析结果**而非字符串 |
-| 列表里一个坏模板就让整个 `list` 抛错 | 面板只能看到报错，看不到其他好模板 | 收集进 `errors` 字段，面板底部用 `.bad` 样式列出「哪个模板坏了、为什么」 |
-| 路由表扩了 A09 但 A 序列范围说明忘同步成「A00–A09」 | 路由表行号变了但元描述还是「A00–A08」——以后按范围判断「ref 数量是否触发序列化」会出错 | 改路由表的同时**必改**序列范围那行；本次在同一次 Edit 内两处都改 |
-| 把 generator 层误当成 server-cli-web 的「第 8 阶段」塞进创建流程表 | 创建流程是「从 0 起一个项目」；generator 是「把项目反向打包成模板」——方向相反，不该并列 | 在「项目建起来之后」一句后加指针（不进入流程表），路由表登记一行；本质上是「项目跑稳后」的可选下一步 |
-
-### 2026-09-29 · 主文档让 AI 知道有 参考实现项目 等一族项目（description 不收实现名 → AI 误以为只有 骨架原型项目）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| description 里只字未提 `参考实现项目` / `落地项目一` / `落地项目二` 这些实际存在的实现 | AI 读到 description 不知道有这些项目；正文第 9 行写「参考实现：`骨架原型项目`」更把误导钉死——AI 会按 骨架原型项目 的形态去理解、抄路径，且**没任何标志告诉它 参考实现项目 也存在** | description 触发词加实现名（`骨架原型项目`、`参考实现项目`、`落地项目一`、`落地项目二` + 项目中文/英文名）；主文档"参考实现"段从单条 骨架原型项目 改为「骨架原型项目 原型 / 参考实现项目 成熟形态」并列，并加一句「写新 ref 时先确认路径在哪个实现里真实存在」防混淆 |
-| 正文"每条规范都在该项目上验证过"暗示 骨架原型项目 是唯一参考 | AI 写新 ref 时倾向把所有路径都写到 骨架原型项目，而事实上 参考实现项目（按 cwd 隔离 scope）才是更成熟的形态 | "骨架原型项目 原型 / 参考实现项目 成熟形态"并列；通用规范在**两类**实现上都验证过；并要求"引用具体路径先确认真实存在" |
-
-### 2026-10-02 · 新增 [[B05-multi-line-cli-input]]（多行 CLI 输入 heredoc 方案）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 文档把错误示例放在成功模板之前 | AI 优先模仿它看到的第一个形状——第一个是 ❌ 示例时，生成的命令就带那个错 | 成功模板永远放章节最前（含完整可复制命令与全部 flag）；错误对照放后面，每条附实测后果 |
-| 在 skill 文档里用真实内部项目名做参考实现 | skill 本身要可交付、不暴露内部环境 | 统一用占位符（xxx / yyy）+ 指导性描述；落地细节由读者自己的项目补 |
-| 内容总结时只写「实现要点」漏掉「AI 为什么会写错」 | 下一个 agent 照要点实现是对的，但写文档示例时仍会犯 heredoc 格式错 | SOP 必须含「AI 常见错误」节（实测后果 + 正确写法），实现要点与错误对照缺一不可 |
-
-### 2026-09-29 · 新增 [[B04-multi-skill]]（skill 子命令扩展方案：多 skill install / list / `--group`）
-
-B 序列原是"重操作 ref"（debug / shim / scope registry 等运行时动作）。
-这一条是**创建时一次定的设计选择**——与 B01/B02/B03 不在同一性质层。
-
-放 B 组的原因：用户指定 B04 编号（按 key_board 当下 ref 编号习惯），
-不与 ref 的内容定性冲突优先于序列名的一致性。**frontmatter 已写明
-命名与定性不完全一致**，让未来读的人不会把它当运行时重操作看待。
-
-内容来源：参考实现项目 实现 `assets/groups.json` + `--group` 解析 + 默认装 `参考实现项目`
-的真实落地。涵盖：
-
-- 两种模式（默认装主 skill / `--group` 一键装一批）
-- `groups.json` 推荐形状
-- `assets/` 与 `groups.json` 的分工（与 [[A04-assert-skill]] 互补）
-- 命名一致性（package.name ≡ 主 skill ≡ 默认 group key）
-- 反模式（基于 参考实现项目 真实踩坑）
-
-### 2026-10-13 · A06 重写为 Trusted Publishing SOP（npm 令牌直发退场 + 首次建包 bootstrap）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 沿用旧 A06 的「gh secret set NPM_TOKEN + npm publish 直发」主路线 | npm 政策变更后 403 `E_STAGE_REQUIRED`（粒度令牌只能暂存发布），发布流水线直接卡死 | A06 重写：**Trusted Publishing（OIDC 零 token）为主线**——`npm trust github <包> --file <wf.yml> --repo <o/r> --allow-publish` 配一次，之后 push 即全自动发布 |
-| 把「staged 发布 + 人工批准」当终点 | 每发一版都要人点一次批准，CI 自动化名存实亡（用户明确要求「使用 GitHub Action 进行发布」） | staged 降级为兜底通道（写进排错表）；主线走 OIDC 直发 |
-| 没发现「信任关系只能配『已存在的包』」 | 新包直接 `npm trust` 报包不存在——鸡生蛋 | A06 新增「首次建包 SOP」：本地 `npm login`（交互式，agent 不代跑）→ `npm publish` 首发 → 才可配信任关系；新项目起步版号避开旧包已占版本段 |
-| CI 沿用 Node 20 | `npm@latest`（12.x）`EBADENGINE`（要求 ≥22.22.2），升级 npm 的步骤直接红 | CI 锁 Node 24；本地 `npx npm@latest` 在旧 Node 上只是警告可忽略，但 CI 里不要凑合 |
-| 发布步骤保留 `NODE_AUTH_TOKEN` + setup-node 带 `registry-url` | 令牌/残留 .npmrc 覆盖 OIDC 通道，报错仍是旧的令牌类症状，误导排查方向 | 模板写清「三个不要」；加 **OIDC 预检步骤**（环境注入 + ID token 获取），失败时一眼分清 GitHub 侧 vs npm 侧 |
-| 只把「网页配置」写进 SOP | 网页操作是 2FA 交互、agent 无法代跑，用户还得自己找入口 | SOP 以 **CLI（`npm trust`，npm ≥ 12）为首选**，网页作备选并注明「交互式，agent 不要代跑」 |
-| force push 覆盖远端后不处理 tag | 旧 tag 悬空指向被覆盖的提交（幂等判断会错乱） | 覆盖前把旧 head 存**本地** tag（`archive/*`）存档；远端旧 tag 需要时 `gh api -X DELETE .../git/refs/tags/<t>` 清理 |
-
-### 2026-10-13 · B03 第四节重做「跨项目面板 · 最近目录下拉」（受控化 + CSS 可复用点）
-
-| 错误操作 | 实际后果 | 正确做法 |
-| --- | --- | --- |
-| 往 B03（案例类 ref）里写内部真实项目名（`nx-rp` / `nx-rh`） | B03 虽按「规范用占位符、案例用实名」的惯例写真实路径，但**「实名」指的是主文档「参考实现」表已承认的抽象标签**（`xxx` / `参考实现项目` / `落地项目一` / `落地项目二`）；内部项目名不在承认集合里——读者环境里对不上任何一个词，成了死链接 | 本 skill 的操作记录里**本来就有这条对账 SOP**（写 ref 后跑 `grep -rn 'nx-'` 逐条核对是否被主文档承认），本次仍漏了一次。落盘前必跑；正文一律用 `xxx` 占位符 |
-| 重写一节时只改正文，不扫它引用的路径与旧形态 | §五 的文件表指向 `components/ui.jsx（useClickOutside）`，而该导出在参考实现里**根本不存在**（是 effect 内联在 App 壳）；§七 的错误案例还在教 `<details>` 的 `ref.current.open = false` 接线——ref 自相矛盾 | 重写一节的收尾动作 = 扫全 ref 里指向该形态的**所有**行（文件表 / 对照表 / 错误案例），一次改齐；改完 grep 旧关键词（如 `details`、`useClickOutside`）确认无残留 |
-| 把 CSS 只写成「长这样」，不写「为什么非得这样」 | 下个同类项目照抄 `opacity: 0 → :hover 1` 却不知道「用绝对定位而非 `visibility` 是为了防显隐时行宽抖动」，换个布局就退化；也没人知道主按钮不 `padding-right` 留位会让长路径压到按钮底下 | 每个 CSS 可复用点配一列「为什么」；把「漏了会怎样」同步进错误案例表（见 B03 第四节与第七节） |
-| 新增行内动作（删除）后仍留在原生 `<details>` 形态 | `<details>` 的展开态是 DOM 原生属性（`ref.current.open`），与 React state 两套真相；且 `summary` 塞不下「切换 + 删除」两个动作 | 一行要放两个动作时换受控 `<div>` + `useState(open)`；`<details>` 只在没有行内附加动作时才够用 |
-| 用 `click` 监听「点击外部」关闭下拉 | 与触发按钮自己的 `onClick` 同阶段冒泡：先 `setOpen(false)` 再被 `setOpen(true)` 抵消，表现为「点一下关了又弹开」 | 用 `mousedown` / `pointerdown`——早于 `click` 触发，天然避开 |
+已迁出主文档 → [[B06-操作记录]]。新增记录按 X01 操作记录模板写：`YYYY-MM-DD｜触发时机`，并带「失效条件 / 复核于」。

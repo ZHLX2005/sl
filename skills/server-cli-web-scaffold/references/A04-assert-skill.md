@@ -82,7 +82,7 @@ assert-skill 的 ref 按**客户使用路径**分序列，文件命名 `<序列�
 - `SKILL.md` 必须有路由表：**代号 / 什么时候读 / 文件**。主文档只做路由，场景细节一律放 ref。
 - ref 数量很少时也至少用 `A01`，不要因为只有一条就退回纯数字命名。
 
-> 命名依据：key_board `references/X02-ref路由优化.md`。单成员序列可跳过 `00`，但动作 ref 从 `01` 起。
+> 命名依据：key_board `references/X01-ref体系SOP.md` §3。单成员序列可跳过 `00`，但动作 ref 从 `01` 起。
 
 ## 五、SKILL.md 最小骨架
 
@@ -153,8 +153,8 @@ assert-skill 的 ref 按**客户使用路径**分序列，文件命名 `<序列�
 
 ## 十、与 key_board 的协作
 
-- 写 `assets/` 内容前，先过 key_board 的 [[X04-产物作用域]]：assert-skill 是**随包分发的项目级 skill**——命令与数据路径用真实值，但不得带入作者机器上的源码、仓库或来源；整个 skill 必须自包含。
-- 创建新 skill 时走 key_board 的 `references/Z01-创建新skill.md`；ref 命名与序列划分走 `references/X02-ref路由优化.md`。
+- 写 `assets/` 内容前，先过 key_board 的 [[X02-产物作用域]]：assert-skill 是**随包分发的项目级 skill**——命令与数据路径用真实值，但不得带入作者机器上的源码、仓库或来源；整个 skill 必须自包含。
+- 创建新 skill 时走 key_board 的 `references/X01-ref体系SOP.md` §5；ref 命名与序列划分走同文件 §3。
 - **不要**把 key_board 的方法论搬进 assets：客户侧 agent 只需要 usage，不需要 skill 生命周期的知识。
 
 ## 十一、错误案例

@@ -10,7 +10,7 @@
 
 ## 一、什么时候读这个
 
-- 在 [[A00]] / [[A01]] 之后，想看一个**已经跑稳的真实项目**的对应实现
+- 在 [[A00-design-and-verify]] / [[A01-bootstrap-serve-first]] 之后，想看一个**已经跑稳的真实项目**的对应实现
 - 调试新接进来的项目化设计（actions / cwd / HTTP 路由）是否符合 A 序列规范
 - 在自己项目里复现「session 没挂、scope 没串」一类问题，想知道 xxx 怎么处理
 
@@ -337,9 +337,9 @@ useClickOutside(wrapRef, () => setOpen(false), { enabled: open });
 
 | 错误操作 | 实际后果 | 正确做法 |
 |---|---|---|
-| 跳过 A 序列直接照抄 B03 的具象设计 | 抽象层与具象层混在一起——读到「`x-xxx-scope` 头」时不知道这是 [[A05]]「按 cwd 隔离」的具象，还是某个项目的特定设计；改规范时漏改 xxx 一侧 | 把 A 序列当必读前置；B03 只当「具象形态速查」，不替代规范 |
+| 跳过 A 序列直接照抄 B03 的具象设计 | 抽象层与具象层混在一起——读到「`x-xxx-scope` 头」时不知道这是 [[A05-state-storage]]「按 cwd 隔离」的具象，还是某个项目的特定设计；改规范时漏改 xxx 一侧 | 把 A 序列当必读前置；B03 只当「具象形态速查」，不替代规范 |
 | 把 B03 当成「扩展清单」去挂新模块 | 新模块通过 B03 就能加到 xxx 框架里，但 **server-cli-web 本身**并没把它当成骨架能力——下次别的项目复用又要重新设计 | 落在 [[A07-extension-loop]] 的 12 处闭环表里，而不是 B03 的子章节 |
-| 把 xxx 的具体路径/文件名当成硬规范 | xxx 是参考实现；`paths.js#cwdScope` 的归一化规则、`store.json` 的 scopes 形状都是**这一类项目**的形态，但每个项目的 `APP_NAME` / `recents` 上限 / KB 目录命名规则都不同 | B03 只描述「这一类项目怎么解」；具体阈值/命名到项目仓库或 [[A05]] 决定 |
+| 把 xxx 的具体路径/文件名当成硬规范 | xxx 是参考实现；`paths.js#cwdScope` 的归一化规则、`store.json` 的 scopes 形状都是**这一类项目**的形态，但每个项目的 `APP_NAME` / `recents` 上限 / KB 目录命名规则都不同 | B03 只描述「这一类项目怎么解」；具体阈值/命名到项目仓库或 [[A05-state-storage]] 决定 |
 | 顶部目录下拉用原生 `<details>` 却不处理点击外部 | 点开「最近目录」后点页面别处菜单不收起，只能再点一次 summary——典型小 bug；选中目录后菜单也常停住不关 | 用第 4 节的收口方式（`mousedown`/`pointerdown` 外部 + Esc）：单下拉内联 effect 即可，多下拉抽 `useClickOutside`；并在选中项 onClick 里主动收起 |
 | 给下拉加「删除」后仍留在 `<details>` 形态 | `<details>` 的展开态是 DOM 原生属性（`ref.current.open`），与 React state 两套真相；且 `summary` 结构塞不下「切换 + 删除」两个动作 | 换受控 `<div>` + `useState(open)`（见第 4 节）；`<details>` 只在没有行内附加动作时才够用 |
 | 用 `click` 监听「点击外部」 | 与触发按钮自己的 `onClick` 同阶段冒泡：先关闭再被 `setOpen(true)` 抵消，表现为「点一下关了又弹开」 | 用 `mousedown` / `pointerdown`——早于 `click` 触发，天然避开 |

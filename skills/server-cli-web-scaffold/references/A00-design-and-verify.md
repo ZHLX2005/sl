@@ -2,6 +2,10 @@
 
 > 归属主文档 [[server-cli-web-scaffold]]。本文件回答两件事：
 > **这套骨架为什么这么分层**，以及 **怎么用机器把分层钉死**。
+>
+> **新项目注意**：本篇的 action 示例是**存量 JS 写法**（对象字面量 + `flags`）。
+> TS 新项目请先读 [[A10-ts-action-pipeline]]（类 + 装饰器 + zod + 代码生成），
+> 前端结构见 [[A11-frontend-split]]。本篇继续保留用于理解分层原理与阅读老项目。
 
 ## 一、驱动关系
 
@@ -206,7 +210,7 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      // ⚠️ 少了这一行，所有 .jsx 都会 Parsing error: Unexpected token '<'
+      // 注意：少了这一行，所有 .jsx 都会 Parsing error: Unexpected token '<'
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: BASE,
